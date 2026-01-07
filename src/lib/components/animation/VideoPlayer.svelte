@@ -1,18 +1,20 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
 	import { currentStep } from '$lib/stores/stepStore';
+	import { currentSubtitleIndex } from '$lib/stores/subtitleStore';
 	import type { SceneStep } from '$lib/stores/stepStore';
 
 	let step = $state<SceneStep>('initial');
 	let videoElement: HTMLVideoElement | null = $state(null);
 	let currentVideoSrc = $state<string | null>(null);
+	let subtitleIndex = $state(0);
 
 	// Map steps to video files - all videos in consecutive order
 	// Note: 'initial' step uses AnimationIntroVideo component with mountains.mp4
+	// motherFalls is now a combined step that shows tiger_2.mp4 and tiger_3.mp4 sequentially
 	const stepToVideoMap: Record<string, string> = {
 		'tigerAppears': '/tiger_1.mp4',
-		'motherFalls': '/tiger_2.mp4',
-		'tigerSpeaks': '/tiger_3.mp4',
+		'motherFalls': '/tiger_2.mp4', // Combined step: will show tiger_2.mp4, then tiger_3.mp4 (via subtitle index)
 		'riceCakeVisible': '/tiger_4.mp4',
 		'tigerEats': '/tiger_4.mp4', // Keep showing the last video
 		'complete': '/tiger_4.mp4' // Keep showing the last video
@@ -20,16 +22,10 @@
 
 	const unsubscribeStep = currentStep.subscribe((s) => {
 		step = s;
-		const videoSrc = stepToVideoMap[s];
-		
-		if (videoSrc) {
-			currentVideoSrc = videoSrc;
-		} else {
-			currentVideoSrc = null;
-		}
+		updateVideoSrc(s, subtitleIndex);
 
 		// Pause video for interaction step, but play for final step
-		if (videoElement) {
+		if (videoElement && currentVideoSrc) {
 			if (s === 'riceCakeVisible') {
 				// Pause and show freeze frame - don't let it play during interaction
 				videoElement.pause();
@@ -52,11 +48,51 @@
 				// Keep video paused on complete step (story finished)
 				videoElement.pause();
 				videoElement.removeAttribute('autoplay');
-			} else if (videoSrc && s !== 'riceCakeVisible' && s !== 'tigerEats' && s !== 'complete') {
+			} else if (s !== 'riceCakeVisible' && s !== 'tigerEats' && s !== 'complete') {
 				// Resume playing for other steps
 				videoElement.setAttribute('autoplay', '');
 				videoElement.play().catch((error) => {
 					console.error('Error playing video:', error);
+				});
+			}
+		}
+	});
+
+	function updateVideoSrc(stepValue: SceneStep, index: number) {
+		// For motherFalls step, switch videos based on subtitle index
+		if (stepValue === 'motherFalls') {
+			if (index === 0) {
+				// First caption (1.0) - show tiger_2.mp4
+				currentVideoSrc = '/tiger_2.mp4';
+			} else if (index === 1) {
+				// Second caption (4.0) - show tiger_3.mp4
+				currentVideoSrc = '/tiger_3.mp4';
+			} else {
+				currentVideoSrc = '/tiger_2.mp4'; // Default to tiger_2.mp4
+			}
+		} else {
+			const videoSrc = stepToVideoMap[stepValue];
+			if (videoSrc) {
+				currentVideoSrc = videoSrc;
+			} else {
+				currentVideoSrc = null;
+			}
+		}
+	}
+
+	const unsubscribeSubtitleIndex = currentSubtitleIndex.subscribe((index) => {
+		subtitleIndex = index;
+		// Update video when subtitle index changes (for motherFalls step)
+		if (step === 'motherFalls') {
+			const previousSrc = currentVideoSrc;
+			updateVideoSrc(step, index);
+			// If video src changed, trigger video reload
+			if (previousSrc !== currentVideoSrc && videoElement) {
+				videoElement.currentTime = 0;
+				videoElement.load();
+				// Play the new video
+				videoElement.play().catch((error) => {
+					console.error('Error playing video after subtitle change:', error);
 				});
 			}
 		}
@@ -115,6 +151,7 @@
 
 	onDestroy(() => {
 		unsubscribeStep();
+		unsubscribeSubtitleIndex();
 		if (videoElement) {
 			videoElement.pause();
 			videoElement = null;

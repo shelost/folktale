@@ -12,6 +12,7 @@
 		narrationError
 	} from '$lib/stores/audioStore';
 	import { getAudioForText, revokeAudioURL } from '$lib/utils/ttsService';
+	import { setSubtitleIndex, resetSubtitleIndex } from '$lib/stores/subtitleStore';
 	import type { Language } from '$lib/types/scene';
 	import { get } from 'svelte/store';
 
@@ -22,55 +23,57 @@
 	let currentAudioURL: string | null = $state(null);
 
 	// Map steps to subtitle timings (matching AnimationSubtitleOverlay)
-	const stepToSubtitleMap: Record<string, number> = {
-		'tigerAppears': 1.0,
-		'motherFalls': 4.0, // Combined caption for motherFalls and tigerSpeaks - only show once
-		'riceCakeVisible': 11.0,
-		'tigerEats': 15.0 // Final caption after rice cake is fed
+	// motherFalls will show both captions (1.0 and 4.0) sequentially
+	const stepToSubtitleMap: Record<string, number[]> = {
+		'tigerAppears': [1.0],
+		'motherFalls': [4.0, 7.0],
+		'riceCakeVisible': [14.0],
+		'tigerEats': [19.0] 
 	};
 
-	function getSubtitleForStep(stepValue: string, lang: Language): string | null {
-		const timing = stepToSubtitleMap[stepValue];
-		if (!timing) return null;
+	function getSubtitleForStep(stepValue: string, lang: Language, index: number = 0): string | null {
+		const timings = stepToSubtitleMap[stepValue];
+		if (!timings || !Array.isArray(timings)) return null;
+		if (index >= timings.length) return null;
 
+		const timing = timings[index];
 		const subtitleEntry = animationData.audio.timings.find((t) => t.time === timing);
 		if (!subtitleEntry) return null;
 
 		return subtitleEntry.text[lang] || null;
 	}
 
+	function getSubtitleCountForStep(stepValue: string): number {
+		const timings = stepToSubtitleMap[stepValue];
+		if (!timings || !Array.isArray(timings)) return 0;
+		return timings.length;
+	}
+
 	function advanceToNextStep() {
 		// Get current step from store to avoid stale closure values
 		const currentStepValue = get(currentStep);
-		
-		// Don't auto-advance from interaction steps or final step
-		// tigerEats will show final caption and then stop (no auto-advance to complete)
 		if (currentStepValue === 'riceCakeVisible' || currentStepValue === 'tigerEats' || currentStepValue === 'complete') {
 			return;
 		}
 
-		// All steps in order (including intermediate steps)
-		const allSteps: any[] = ['initial', 'tigerAppears', 'motherFalls', 'tigerSpeaks', 'riceCakeVisible', 'tigerEats', 'complete'];
+		// All steps in order
+		const allSteps: any[] = ['initial', 'tigerAppears', 'motherFalls', 'riceCakeVisible', 'tigerEats', 'complete'];
 		const currentIndex = allSteps.indexOf(currentStepValue);
 		
 		if (currentIndex === -1 || currentIndex >= allSteps.length - 1) {
-			return; // Invalid step or already at the end
+			return; 
 		}
 
 		const nextStepValue = allSteps[currentIndex + 1];
-		
-		// Move to next step
+	
 		nextStep();
 		
-		// Trigger the corresponding scene event
 		switch (nextStepValue) {
 			case 'tigerAppears':
 				triggerSceneEvent('tigerAppears');
 				break;
 			case 'motherFalls':
 				triggerSceneEvent('motherFalls');
-				break;
-			case 'tigerSpeaks':
 				triggerSceneEvent('tigerSpeaks');
 				break;
 			case 'riceCakeVisible':
@@ -90,29 +93,29 @@
 		}
 
 		// For 'initial' step, do nothing - let AnimationIntroVideo handle it
-		// The intro video will auto-advance when the video ends
 		if (stepValue === 'initial') {
 			return;
 		}
 
-		// Skip narration for tigerSpeaks since it shares the same caption as motherFalls
-		// The combined caption will play during motherFalls step
-		if (stepValue === 'tigerSpeaks') {
-			// Auto-advance quickly since caption already shown in motherFalls
-			setTimeout(() => {
-				advanceToNextStep();
-			}, 500);
+		// For motherFalls, play both captions sequentially (1.0 then 4.0)
+		if (stepValue === 'motherFalls') {
+			await playMultipleNarrations(stepValue, lang, isManualChange);
 			return;
 		}
 
 		const text = getSubtitleForStep(stepValue, lang);
 		
 		// If no narration text, auto-advance after a short delay
+		// BUT: if this is a manual change from initial to tigerAppears, don't auto-advance
 		if (!text || text.trim() === '') {
+			// If user manually started from initial, don't auto-advance from first step
+			if (isManualChange && stepValue === 'tigerAppears') {
+				return; 
+			}
 			// Auto-advance after pause delay for steps without narration
 			setTimeout(() => {
 				advanceToNextStep();
-			}, 2500); // 2.5 second pause (1s base + 1.5s pause)
+			}, 2500); 
 			return;
 		}
 
@@ -134,6 +137,7 @@
 					return; // Story complete, stop here
 				}
 				// Add a pause delay before advancing to next step
+				// This applies to all steps including tigerAppears (even if manually started)
 				setTimeout(() => {
 					advanceToNextStep();
 				}, 1500); // 1.5 second pause between slides
@@ -145,9 +149,81 @@
 			error = err instanceof Error ? err.message : 'Failed to generate narration';
 			loading = false;
 			// Graceful degradation - auto-advance even if narration fails
+			// BUT: if this is a manual change from initial, don't auto-advance
+			if (isManualChange && stepValue === 'tigerAppears') {
+				// User manually started, stay on first step even if narration fails
+				return;
+			}
 			setTimeout(() => {
 				advanceToNextStep();
 			}, 1000);
+		}
+	}
+
+	async function playMultipleNarrations(stepValue: string, lang: Language, isManualChange: boolean = false) {
+		const subtitleCount = getSubtitleCountForStep(stepValue);
+		if (subtitleCount === 0) {
+			// No narrations, auto-advance
+			setTimeout(() => {
+				advanceToNextStep();
+			}, 2500);
+			return;
+		}
+
+		// Reset subtitle index at the start
+		resetSubtitleIndex();
+
+		// Play each narration sequentially
+		for (let i = 0; i < subtitleCount; i++) {
+			// Update subtitle index to show the correct caption
+			setSubtitleIndex(i);
+			
+			const text = getSubtitleForStep(stepValue, lang, i);
+			if (!text || text.trim() === '') {
+				continue; // Skip empty narrations
+			}
+
+			try {
+				loading = true;
+				error = null;
+
+				// Get audio URL (will use cache if available)
+				const audioURL = await getAudioForText(text, lang);
+				currentAudioURL = audioURL;
+
+				// Create and play audio element
+				const audioElement = createNarrationElement(audioURL);
+				
+				// Wait for this narration to complete before playing the next one
+				await new Promise<void>((resolve, reject) => {
+					audioElement.addEventListener('ended', () => {
+						resolve();
+					});
+					audioElement.addEventListener('error', (e) => {
+						console.error('Narration audio error:', e);
+						resolve(); // Continue even on error
+					});
+					playNarration(audioElement);
+				});
+
+				// Small pause between narrations
+				if (i < subtitleCount - 1) {
+					await new Promise(resolve => setTimeout(resolve, 500));
+				}
+			} catch (err) {
+				console.error(`Failed to play narration ${i + 1}:`, err);
+				error = err instanceof Error ? err.message : 'Failed to generate narration';
+				loading = false;
+			}
+		}
+
+		loading = false;
+
+		// After all narrations complete, auto-advance (unless it's the final step)
+		if (stepValue !== 'tigerEats') {
+			setTimeout(() => {
+				advanceToNextStep();
+			}, 1500); // 1.5 second pause after all narrations
 		}
 	}
 
@@ -155,9 +231,19 @@
 		const previousStep = step;
 		step = s;
 		
-		// Always play narration when step changes (will stop previous narration)
+		// Reset subtitle index when step changes
 		if (previousStep !== s) {
-			playNarrationForStep(s, language, true);
+			resetSubtitleIndex();
+		}
+		
+		// Always play narration when step changes (will stop previous narration)
+		// Mark as manual change only if coming from initial (user clicked play button)
+		if (previousStep !== s) {
+			const isManualStart = previousStep === 'initial' && s === 'tigerAppears';
+			// Small delay to ensure step is properly set before starting narration
+			setTimeout(() => {
+				playNarrationForStep(s, language, isManualStart);
+			}, 100);
 		}
 	});
 

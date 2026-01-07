@@ -22,7 +22,6 @@
 			initial: { kr: '시작', en: 'Start' },
 			tigerAppears: { kr: '호랑이 등장', en: 'Tiger Appears' },
 			motherFalls: { kr: '어머니 넘어짐', en: 'Mother Falls' },
-			tigerSpeaks: { kr: '호랑이 말함', en: 'Tiger Speaks' },
 			riceCakeVisible: { kr: '떡 주기', en: 'Feed Rice Cake' },
 			tigerEats: { kr: '호랑이 먹음', en: 'Tiger Eats' },
 			complete: { kr: '완료', en: 'Complete' }
@@ -41,8 +40,7 @@
 				break;
 			case 'motherFalls':
 				triggerSceneEvent('motherFalls');
-				break;
-			case 'tigerSpeaks':
+				// Also trigger tigerSpeaks event since it's part of the combined step
 				triggerSceneEvent('tigerSpeaks');
 				break;
 			case 'riceCakeVisible':

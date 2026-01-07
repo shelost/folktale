@@ -11,26 +11,33 @@ export const animationData: SceneData = {
 			{
 				time: 1.0,
 				text: {
-					kr: '그 때, 갑자기 커다란 호랑이가 어흥! 하고 나타났어요.',
+					kr: '어느 날, 어머니는 떡을 가지고 산을 넘고 있었어요.',
 					en: 'Suddenly, a big tiger appeared with a "Roar!"'
 				}
 			},
 			{
 				time: 4.0,
 				text: {
+					kr: '그 때, 갑자기 커다란 호랑이가 어흥! 하고 나타났어요.',
+					en: 'Suddenly, a big tiger appeared with a "Roar!"'
+				}
+			},
+			{
+				time: 7.0,
+				text: {
 					kr: '어머니는 깜짝 놀라 벌러덩 넘어졌지요. "떡 하나 주면 안 잡아먹지." 호랑이가 쉰 목소리로 말했어요.',
 					en: 'The mother was so scared she fell over. "Give me a rice cake, and I won\'t eat you," said the tiger in a raspy voice.'
 				}
 			},
 			{
-				time: 11.0,
+				time: 14.0,
 				text: {
 					kr: '어머니는 떡 하나를 주었어요.',
 					en: 'The mother gave him a rice cake.'
 				}
 			},
 			{
-				time: 15.0,
+				time: 19.0,
 				text: {
 					kr: '호랑이는 떡을 먹고 어머니를 놓아주었어요.',
 					en: 'The tiger ate the rice cake and let the mother go.'

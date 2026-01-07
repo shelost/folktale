@@ -4,7 +4,6 @@ export type SceneStep =
 	| 'initial'
 	| 'tigerAppears'
 	| 'motherFalls'
-	| 'tigerSpeaks'
 	| 'riceCakeVisible'
 	| 'tigerEats'
 	| 'complete';
@@ -17,7 +16,6 @@ export function nextStep() {
 			'initial',
 			'tigerAppears',
 			'motherFalls',
-			'tigerSpeaks',
 			'riceCakeVisible',
 			'tigerEats',
 			'complete'
@@ -47,7 +45,6 @@ export function getStepIndex(step: SceneStep): number {
 		'initial',
 		'tigerAppears',
 		'motherFalls',
-		'tigerSpeaks',
 		'riceCakeVisible',
 		'tigerEats',
 		'complete'
@@ -60,7 +57,6 @@ export function getAllSteps(): SceneStep[] {
 		'initial',
 		'tigerAppears',
 		'motherFalls',
-		'tigerSpeaks',
 		'riceCakeVisible',
 		'tigerEats',
 		'complete'

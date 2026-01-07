@@ -1,25 +1,31 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import { currentStep } from '$lib/stores/stepStore';
 	import { languageStore } from '$lib/stores/languageStore';
+	import { currentSubtitleIndex as subtitleIndexStore } from '$lib/stores/subtitleStore';
 	import { animationData } from '$lib/data/animation';
 	import type { Language } from '$lib/types/scene';
 
 	let step = $state('initial' as any);
 	let language: Language = $state('kr');
 	let subtitle = $state<string | null>(null);
+	let currentSubtitleIndex = $state(0);
 
 	// Map steps to subtitle timings
-	const stepToSubtitleMap: Record<string, number> = {
-		'tigerAppears': 1.0,
-		'motherFalls': 4.0, // Combined caption for motherFalls and tigerSpeaks - only show once
-		'riceCakeVisible': 11.0,
-		'tigerEats': 15.0 // Final caption after rice cake is fed
+	// motherFalls will show both captions (1.0 and 4.0) sequentially
+	const stepToSubtitleMap: Record<string, number[]> = {
+		'tigerAppears': [1.0],
+		'motherFalls': [1.0, 4.0], // Combined step: show caption at 1.0 first, then 4.0
+		'riceCakeVisible': [11.0],
+		'tigerEats': [15.0] // Final caption after rice cake is fed
 	};
 
-	function getSubtitleForStep(stepValue: string, lang: Language): string | null {
-		const timing = stepToSubtitleMap[stepValue];
-		if (!timing) return null;
+	function getSubtitleForStep(stepValue: string, lang: Language, index: number = 0): string | null {
+		const timings = stepToSubtitleMap[stepValue];
+		if (!timings || !Array.isArray(timings)) return null;
+		if (index >= timings.length) return null;
 
+		const timing = timings[index];
 		const subtitleEntry = animationData.audio.timings.find((t) => t.time === timing);
 		if (!subtitleEntry) return null;
 
@@ -28,12 +34,25 @@
 
 	const unsubscribeStep = currentStep.subscribe((s) => {
 		step = s;
-		subtitle = getSubtitleForStep(s, language);
+		currentSubtitleIndex = 0; // Reset index when step changes
+		subtitle = getSubtitleForStep(s, language, 0);
 	});
 
 	const unsubscribeLang = languageStore.subscribe((lang) => {
 		language = lang;
-		subtitle = getSubtitleForStep(step, lang);
+		subtitle = getSubtitleForStep(step, lang, currentSubtitleIndex);
+	});
+
+	const unsubscribeSubtitleIndex = subtitleIndexStore.subscribe((index) => {
+		currentSubtitleIndex = index;
+		// Update subtitle when index changes (for steps with multiple captions like motherFalls)
+		subtitle = getSubtitleForStep(step, language, index);
+	});
+
+	onDestroy(() => {
+		unsubscribeStep();
+		unsubscribeLang();
+		unsubscribeSubtitleIndex();
 	});
 </script>
 
