@@ -43,6 +43,26 @@ export function drawBackground(
 	ctx.lineTo(width, height * 0.6);
 	ctx.closePath();
 	ctx.fill();
+
+	// Draw some trees
+	ctx.fillStyle = '#2d5016';
+	for (let i = 0; i < 5; i++) {
+		const treeX = (width / 6) * (i + 1);
+		const treeY = height * 0.6;
+		drawTree(ctx, treeX, treeY, 30 + Math.random() * 20);
+	}
+}
+
+function drawTree(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
+	// Tree trunk
+	ctx.fillStyle = '#654321';
+	ctx.fillRect(x - size * 0.1, y - size * 0.3, size * 0.2, size * 0.3);
+
+	// Tree foliage
+	ctx.fillStyle = '#2d5016';
+	ctx.beginPath();
+	ctx.arc(x, y - size * 0.3, size * 0.4, 0, Math.PI * 2);
+	ctx.fill();
 }
 
 export function drawTiger(ctx: CanvasRenderingContext2D, tiger: TigerState, images: LoadedImages, canvasWidth?: number) {
@@ -151,18 +171,11 @@ export function drawMother(ctx: CanvasRenderingContext2D, mother: MotherState, i
 	ctx.translate(mother.x, mother.y);
 
 	// Rotate if falling
-	if (mother.animationState === 'falling' && mother.animationStartTime !== undefined) {
-		const animationDuration = 600; // 600ms fall animation
-		const elapsed = Date.now() - mother.animationStartTime;
-		const progress = Math.min(1, elapsed / animationDuration);
-		
-		// Ease-out animation for falling
-		const easedProgress = 1 - Math.pow(1 - progress, 2);
-		
-		// Animate fall rotation (up to 30 degrees)
-		const rotation = easedProgress * (Math.PI / 6);
+	if (mother.animationState === 'falling') {
+		// Animate fall rotation
+		const rotation = Math.min(Math.PI / 6, (Date.now() % 2000) / 2000 * Math.PI / 6);
 		ctx.rotate(rotation);
-		ctx.translate(0, easedProgress * 50); // Fall down
+		ctx.translate(0, (Date.now() % 2000) / 2000 * 50); // Fall down
 	} else if (mother.animationState === 'fallen') {
 		ctx.rotate(Math.PI / 6); // 30 degrees - fully fallen
 		ctx.translate(0, 50); // Fallen position

@@ -38,7 +38,7 @@ export function updateMother(mother: Partial<MotherState>) {
 		...state,
 		characters: {
 			...state.characters,
-			mother: { ...mother }
+			mother: { ...state.characters.mother, ...mother }
 		}
 	}));
 }
@@ -143,11 +143,7 @@ export function triggerSceneEvent(event: string) {
 				...state,
 				characters: {
 					...state.characters,
-					mother: { 
-						...state.characters.mother, 
-						animationState: 'falling',
-						animationStartTime: Date.now()
-					}
+					mother: { ...state.characters.mother, animationState: 'falling' }
 				}
 			};
 		}

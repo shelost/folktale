@@ -36,7 +36,6 @@ export interface MotherState extends Position {
 	height: number;
 	visible: boolean;
 	animationState: 'walking' | 'falling' | 'fallen';
-	animationStartTime?: number;
 	color: string;
 }
 

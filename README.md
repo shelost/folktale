@@ -1,22 +1,34 @@
-# sv
+# Folktale Interactive Story
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+An interactive storytelling application built with SvelteKit and Svelte 5.
 
-## Creating a project
+## Features
 
-If you're seeing this, you've probably already done this step. Congrats!
+- Interactive scene progression with step-based navigation
+- Bilingual support (Korean and English)
+- Audio narration using OpenAI Text-to-Speech
+- Drag-and-drop interactions
+- Cultural dictionary and parent tips
+
+## Setup
+
+1. Install dependencies:
 
 ```sh
-# create a new project in the current directory
-npx sv create
-
-# create a new project in my-app
-npx sv create my-app
+npm install
 ```
 
-## Developing
+2. Configure environment variables:
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+Create a `.env` file in the root directory with your OpenAI API key:
+
+```
+OPENAI_API_KEY=your_openai_api_key_here
+```
+
+Get your API key from [OpenAI Platform](https://platform.openai.com/api-keys).
+
+3. Start the development server:
 
 ```sh
 npm run dev
@@ -36,3 +48,7 @@ npm run build
 You can preview the production build with `npm run preview`.
 
 > To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+
+## Audio Narration
+
+The app uses OpenAI's Text-to-Speech API to generate audio narrations for each slide's captions. Audio files are cached in the browser's IndexedDB for performance. The narration automatically plays when slides change and adapts to the selected language (Korean or English).

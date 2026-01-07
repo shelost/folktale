@@ -2,7 +2,8 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
 	import { sceneStore, feedRiceCake } from '$lib/stores/sceneStore';
-	import { interactionStore, startDrag, updateDragPosition, endDrag } from '$lib/stores/interactionStore';
+	import { interactionStore, startDrag, updateDragPosition, endDrag, completeInteraction } from '$lib/stores/interactionStore';
+	import { nextStep } from '$lib/stores/stepStore';
 	import type { SceneState, RiceCakeState } from '$lib/types/scene';
 
 	let scene = $state<SceneState | null>(null);
@@ -57,36 +58,49 @@
 	}
 
 	function handleGlobalPointerUp(e: PointerEvent) {
-		if (draggingCakeId) {
-			// Check if we're dropping on the tiger by checking if pointer is over tiger
+		if (draggingCakeId && interactionState.dragging && scene) {
+			// Check if we're dropping on the tiger's circular drop zone
 			const tigerElement = document.querySelector('.tiger-drop-zone') as HTMLElement;
-			if (tigerElement) {
-				const rect = tigerElement.getBoundingClientRect();
-				if (
-					e.clientX >= rect.left &&
-					e.clientX <= rect.right &&
-					e.clientY >= rect.top &&
-					e.clientY <= rect.bottom
-				) {
-					// Trigger pointerup on tiger element to handle drop
-					const pointerUpEvent = new PointerEvent('pointerup', {
-						bubbles: true,
-						cancelable: true,
-						clientX: e.clientX,
-						clientY: e.clientY,
-						pointerId: e.pointerId
-					});
-					tigerElement.dispatchEvent(pointerUpEvent);
+			if (tigerElement && scene.characters.tiger.visible) {
+				const tigerRect = tigerElement.getBoundingClientRect();
+				const dropX = e.clientX;
+				const dropY = e.clientY;
+				
+				// Calculate center and radius of circular drop zone
+				const centerX = tigerRect.left + tigerRect.width / 2;
+				const centerY = tigerRect.top + tigerRect.height / 2;
+				const radius = tigerRect.width / 2;
+				
+				// Calculate distance from drop point to center
+				const distance = Math.sqrt(
+					Math.pow(dropX - centerX, 2) + Math.pow(dropY - centerY, 2)
+				);
+				
+				// If dropping within circular zone, handle the drop here
+				if (distance <= radius) {
+					const riceCake = scene.characters.riceCakes.find((rc) => rc.id === draggingCakeId);
+					if (riceCake && !riceCake.fed) {
+						feedRiceCake(draggingCakeId);
+						completeInteraction(`feed-tiger-${draggingCakeId}`);
+						endDrag();
+						draggingCakeId = null;
+						
+						// Check if the rice cake has been fed (only 1 rice cake now)
+						setTimeout(() => {
+							sceneStore.subscribe((updatedState) => {
+								if (updatedState.interactionState.riceCakesFed >= 1) {
+									nextStep();
+								}
+							})();
+						}, 100);
+						return;
+					}
 				}
 			}
 			
-			// Delay ending drag to allow Tiger component to detect drop
-			setTimeout(() => {
-				if (interactionState.dragging && draggingCakeId) {
-					endDrag();
-					draggingCakeId = null;
-				}
-			}, 200);
+			// Not dropping on tiger, end drag
+			endDrag();
+			draggingCakeId = null;
 		}
 	}
 
@@ -122,7 +136,7 @@
 </script>
 
 {#if scene?.characters.riceCakes}
-	{#each scene.characters.riceCakes.filter(rc => rc.visible && !rc.fed) as riceCake (riceCake.id)}
+	{#each scene.characters.riceCakes.filter(rc => rc.visible) as riceCake (riceCake.id)}
 		{@const pos = getRiceCakePosition(riceCake)}
 		{@const isDragging = draggingCakeId === riceCake.id}
 		{@const isHovered = hoveredCakeId === riceCake.id}
@@ -131,8 +145,9 @@
 			class="rice-cake-zone"
 			class:dragging={isDragging}
 			class:hovered={isHovered && !isDragging}
-			style="position: absolute; left: {pos.x}px; top: {pos.y}px; width: {Math.max(riceCake.width, 40)}px; height: {Math.max(riceCake.height, 30)}px; min-width: 40px; min-height: 30px; pointer-events: auto !important; cursor: {riceCake.draggable ? 'grab' : 'default'}; z-index: {isDragging ? 2000 : 1000}; touch-action: none;"
-			onpointerdown={(e) => handlePointerDown(e, riceCake)}
+			class:fed={riceCake.fed}
+			style="position: absolute; left: {pos.x}px; top: {pos.y}px; width: {Math.max(riceCake.width, 120)}px; height: {Math.max(riceCake.height, 90)}px; min-width: 120px; min-height: 90px; pointer-events: {riceCake.fed ? 'none' : 'auto'} !important; cursor: {riceCake.draggable ? 'grab' : 'default'}; z-index: {riceCake.fed ? 1000 : 1002}; touch-action: none;"
+			onpointerdown={(e) => { if (!riceCake.fed) handlePointerDown(e, riceCake); }}
 			onpointerenter={() => { if (riceCake.draggable && !riceCake.fed) hoveredCakeId = riceCake.id; }}
 			onpointerleave={() => { if (hoveredCakeId === riceCake.id) hoveredCakeId = null; }}
 			role="button"
@@ -189,5 +204,16 @@
 
 	.rice-cake-zone:not(.dragging):not(.hovered):hover {
 		transform: scale(1.05);
+	}
+
+	.rice-cake-zone.fed {
+		opacity: 0.9;
+		pointer-events: none;
+		cursor: default;
+	}
+
+	.rice-cake-zone.fed .rice-cake-visual {
+		opacity: 0.8;
+		transform: scale(0.9);
 	}
 </style>

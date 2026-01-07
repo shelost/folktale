@@ -131,40 +131,6 @@
 			}
 		}
 
-		// Check if mother falling animation is complete
-		if (scene.characters.mother.animationState === 'falling' && 
-		    scene.characters.mother.animationStartTime !== undefined) {
-			const animationDuration = 600;
-			const elapsed = Date.now() - scene.characters.mother.animationStartTime;
-			if (elapsed >= animationDuration) {
-				// Animation complete, transition to fallen state
-				sceneStore.update((state) => ({
-					...state,
-					characters: {
-						...state.characters,
-						mother: {
-							...state.characters.mother,
-							animationState: 'fallen'
-						}
-					}
-				}));
-				
-				// After a delay, get back up to normal position
-				setTimeout(() => {
-					sceneStore.update((state) => ({
-						...state,
-						characters: {
-							...state.characters,
-							mother: {
-								...state.characters.mother,
-								animationState: 'walking'
-							}
-						}
-					}));
-				}, 1500); // Stay fallen for 1.5 seconds, then get back up
-			}
-		}
-
 		// Draw scene with images (images may be null initially, renderer handles fallback)
 		drawScene(
 			ctx,

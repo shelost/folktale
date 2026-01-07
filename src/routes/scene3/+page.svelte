@@ -8,8 +8,9 @@
 	import AudioControls from '$lib/components/ui/AudioControls.svelte';
 	import CulturalDictionary from '$lib/components/ui/CulturalDictionary.svelte';
 	import ParentTip from '$lib/components/ui/ParentTip.svelte';
-	import NextButton from '$lib/components/ui/NextButton.svelte';
 	import StepSlider from '$lib/components/ui/StepSlider.svelte';
+	import NarrationManager from '$lib/components/ui/NarrationManager.svelte';
+	import IntroVideo from '$lib/components/ui/IntroVideo.svelte';
 </script>
 
 <div class="scene-page">
@@ -20,12 +21,13 @@
 		<RiceCakes />
 	</SceneContainer>
 	
+	<IntroVideo />
 	<SubtitleOverlay />
+	<NarrationManager />
 	<LanguageToggle />
 	<AudioControls />
 	<CulturalDictionary />
 	<ParentTip />
-	<NextButton />
 </div>
 
 <style>
