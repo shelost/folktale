@@ -21,6 +21,7 @@
 
 	let step = $state<SceneStep>('initial');
 	let language: Language = $state('kr');
+	let roarAudio: HTMLAudioElement | null = $state(null);
 
 	const unsubscribeStep = currentStep.subscribe((s) => {
 		step = s;
@@ -29,6 +30,29 @@
 	const unsubscribeLang = languageStore.subscribe((lang) => {
 		language = lang;
 	});
+
+	function handleRightHalfClick(e: PointerEvent) {
+		// Only allow clicks after tiger appears
+		if (step === 'initial' || !roarAudio) return;
+
+		// Don't trigger if clicking on interactive elements
+		const target = e.target as HTMLElement;
+		if (target.closest('button') || target.closest('.rice-cake-zone') || target.closest('video')) {
+			return;
+		}
+
+		// Check if click is on the right half of the screen
+		const clickX = e.clientX;
+		const screenWidth = window.innerWidth;
+		
+		if (clickX > screenWidth / 2) {
+			// Reset and play the roar sound
+			roarAudio.currentTime = 0;
+			roarAudio.play().catch((error) => {
+				console.error('Error playing roar sound:', error);
+			});
+		}
+	}
 
 	// Initialize scene store with animation data
 	onMount(() => {
@@ -51,14 +75,22 @@
 			}
 		});
 
+		// Load roar sound
+		roarAudio = new Audio('/roar.mov');
+		roarAudio.preload = 'auto';
+
 		return () => {
 			unsubscribeStep();
 			unsubscribeLang();
+			if (roarAudio) {
+				roarAudio.pause();
+				roarAudio = null;
+			}
 		};
 	});
 </script>
 
-<div class="scene-page">
+<div class="scene-page" onpointerdown={handleRightHalfClick}>
 	<StepSlider />
 	<AnimationIntroVideo />
 	{#if step !== 'initial'}
