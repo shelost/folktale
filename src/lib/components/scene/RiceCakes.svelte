@@ -155,7 +155,12 @@
 			title={riceCake.draggable ? 'Drag me to the tiger!' : ''}
 			data-rice-cake-id={riceCake.id}
 		>
-			<div class="rice-cake-visual"></div>
+			<img
+				src="/tteok.png"
+				alt="Rice cake"
+				class="rice-cake-visual"
+				draggable="false"
+			/>
 		</div>
 	{/each}
 {/if}
@@ -172,11 +177,10 @@
 	.rice-cake-visual {
 		width: 100%;
 		height: 100%;
-		background: linear-gradient(135deg, #fff8dc 0%, #ffe4b5 100%);
-		border: 2px solid #d4a574;
-		border-radius: 6px;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+		object-fit: contain;
 		transition: all 0.2s ease-out;
+		user-select: none;
+		-webkit-user-drag: none;
 	}
 
 	.rice-cake-zone:hovered .rice-cake-visual {

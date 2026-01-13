@@ -68,7 +68,9 @@
 		bottom: 100px;
 		left: 50%;
 		transform: translateX(-50%);
+		backdrop-filter: blur(10px);
 		background: rgba(0, 0, 0, 0.8);
+		box-shadow: -4px 18px 24px 0 rgba(0, 0, 0, 0.6);
 		color: white;
 		padding: 16px 24px;
 		border-radius: 8px;
