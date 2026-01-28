@@ -83,7 +83,7 @@
 		background-size: contain;
 		background-repeat: no-repeat;
 		background-position: center;
-		position: relative;
+		position: relative;;p0, .o0k894  ;
 		width: 100%;
 		min-height: 400px;
 		display: flex;

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { sceneStore, triggerSceneEvent, feedRiceCake } from '$lib/stores/sceneStore';
+	import { sceneStore, feedRiceCake } from '$lib/stores/sceneStore';
 	import { interactionStore, completeInteraction, endDrag } from '$lib/stores/interactionStore';
 	import { currentStep, nextStep } from '$lib/stores/stepStore';
 	import type { SceneState } from '$lib/types/scene';
@@ -33,19 +33,19 @@
 		
 		if (!riceCake || riceCake.fed) return;
 
-			// Use the actual pointer position (clientX/clientY) for drop detection
-			const dropX = e.clientX;
-			const dropY = e.clientY;
+		// Use the actual pointer position (clientX/clientY) for drop detection
+		const dropX = e.clientX;
+		const dropY = e.clientY;
 
-			// Calculate center of circular drop zone (tiger's mouth area)
-			const centerX = rect.left + rect.width / 2;
-			const centerY = rect.top + rect.height * 0.4; // 40% down from top (mouth position)
-			const radius = Math.min(rect.width, rect.height) * 0.6; // 60% of smaller dimension - much larger drop zone
-			
-			// Calculate distance from drop point to center
-			const distance = Math.sqrt(
-				Math.pow(dropX - centerX, 2) + Math.pow(dropY - centerY, 2)
-			);
+		// Calculate center of circular drop zone (tiger's mouth area)
+		const centerX = rect.left + rect.width / 2;
+		const centerY = rect.top + rect.height / 2;
+		const radius = Math.min(rect.width, rect.height) / 2;
+		
+		// Calculate distance from drop point to center
+		const distance = Math.sqrt(
+			Math.pow(dropX - centerX, 2) + Math.pow(dropY - centerY, 2)
+		);
 
 		// Check if drop position is within circular drop zone
 		if (distance <= radius) {
@@ -70,35 +70,43 @@
 	function handleTigerPointerOver() {
 		// Visual feedback is handled by CSS class
 	}
+
+	// Show drop zone during riceCakeVisible step (no need to check tiger.visible since we use fixed positioning)
+	const showDropZone = $derived(step === 'riceCakeVisible');
+	const isDragging = $derived(interactionState.dragging && interactionState.dragItem && scene?.characters.riceCakes.some(rc => rc.id === interactionState.dragItem));
 </script>
 
-{#if scene?.characters.tiger.visible && step === 'riceCakeVisible'}
-	<!-- Tiger circular drop zone (at tiger's mouth) - only visible during interaction -->
-	{@const tigerX = scene.characters.tiger.finalX ?? scene.characters.tiger.x}
-	{@const tigerY = scene.characters.tiger.y}
-	{@const centerX = tigerX + scene.characters.tiger.width / 2}
-	{@const centerY = tigerY + scene.characters.tiger.height * 0.4}
-	{@const radius = Math.min(scene.characters.tiger.width, scene.characters.tiger.height) * 0.6}
+{#if showDropZone}
+	<!-- Tiger circular drop zone - positioned to overlay where tiger appears in the video -->
 	<div
 		class="tiger-drop-zone"
-		class:drop-target={interactionState.dragging && interactionState.dragItem && scene.characters.riceCakes.some(rc => rc.id === interactionState.dragItem)}
-		style="position: absolute; left: {centerX - radius}px; top: {centerY - radius}px; width: {radius * 2}px; height: {radius * 2}px; pointer-events: auto; cursor: {interactionState.dragging && interactionState.dragItem && scene.characters.riceCakes.some(rc => rc.id === interactionState.dragItem) ? 'grab' : 'default'}; z-index: 1003;"
+		class:drop-target={isDragging}
 		onpointerup={handleTigerPointerUp}
 		onpointerover={handleTigerPointerOver}
 		role="button"
 		aria-label="Tiger - drop rice cake here"
-		title={interactionState.dragging && interactionState.dragItem && scene?.characters.riceCakes.some(rc => rc.id === interactionState.dragItem) ? 'Drop rice cake on tiger' : 'Drop zone - drag rice cake here'}
+		title={isDragging ? 'Drop rice cake on tiger' : 'Drop zone - drag rice cake here'}
 	></div>
 {/if}
 
 <style>
 	.tiger-drop-zone {
+		/* Use fixed positioning with viewport percentages to match tiger in video */
+		position: fixed;
+		right: 15%;
+		top: 25%;
+		width: 35vw;
+		height: 50vh;
+		max-width: 400px;
+		max-height: 400px;
 		border-radius: 50%;
 		transition: all 0.2s ease;
 		z-index: 1001; /* Above dimming overlay, below rice cakes when dragging */
+		pointer-events: auto;
+		cursor: default;
 		/* Always show a subtle outline so users know where to drop */
-		border: 2px dashed rgba(255, 200, 0, 0.4);
-		background: rgba(255, 200, 0, 0.1);
+		border: 3px dashed rgba(255, 200, 0, 0.5);
+		background: rgba(255, 200, 0, 0.15);
 	}
 
 	.tiger-drop-zone.drop-target {
@@ -106,6 +114,7 @@
 		border: 4px dashed #ff8800;
 		box-shadow: 0 0 30px rgba(255, 136, 0, 0.8), inset 0 0 20px rgba(255, 200, 0, 0.3);
 		animation: pulse 1s ease-in-out infinite;
+		cursor: grab;
 	}
 
 	@keyframes pulse {
@@ -114,8 +123,17 @@
 			opacity: 0.8;
 		}
 		50% {
-			transform: scale(1.02);
+			transform: scale(1.05);
 			opacity: 1;
+		}
+	}
+
+	@media (max-width: 768px) {
+		.tiger-drop-zone {
+			right: 5%;
+			top: 20%;
+			width: 45vw;
+			height: 45vh;
 		}
 	}
 </style>

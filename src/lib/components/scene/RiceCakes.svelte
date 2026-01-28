@@ -61,7 +61,7 @@
 		if (draggingCakeId && interactionState.dragging && scene) {
 			// Check if we're dropping on the tiger's circular drop zone
 			const tigerElement = document.querySelector('.tiger-drop-zone') as HTMLElement;
-			if (tigerElement && scene.characters.tiger.visible) {
+			if (tigerElement) {
 				const tigerRect = tigerElement.getBoundingClientRect();
 				const dropX = e.clientX;
 				const dropY = e.clientY;
@@ -69,7 +69,7 @@
 				// Calculate center and radius of circular drop zone
 				const centerX = tigerRect.left + tigerRect.width / 2;
 				const centerY = tigerRect.top + tigerRect.height / 2;
-				const radius = tigerRect.width / 2;
+				const radius = Math.min(tigerRect.width, tigerRect.height) / 2;
 				
 				// Calculate distance from drop point to center
 				const distance = Math.sqrt(

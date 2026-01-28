@@ -10,6 +10,7 @@
 	import AnimationCulturalDictionary from '$lib/components/ui/AnimationCulturalDictionary.svelte';
 	import AnimationParentTip from '$lib/components/ui/AnimationParentTip.svelte';
 	import TigerSpeechBubble from '$lib/components/ui/TigerSpeechBubble.svelte';
+	import CharacterClickZones from '$lib/components/ui/CharacterClickZones.svelte';
 	import StepSlider from '$lib/components/ui/StepSlider.svelte';
 	import Tiger from '$lib/components/scene/Tiger.svelte';
 	import RiceCakes from '$lib/components/scene/RiceCakes.svelte';
@@ -120,6 +121,7 @@
 	<AnimationSubtitleOverlay />
 	<AnimationNarrationManager />
 	<TigerSpeechBubble />
+	<CharacterClickZones />
 	<LanguageToggle />
 	<AudioControls />
 	<AnimationCulturalDictionary />
