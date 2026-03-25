@@ -7,12 +7,13 @@
 	import AnimationNarrationManager from '$lib/components/ui/AnimationNarrationManager.svelte';
 	import LanguageToggle from '$lib/components/ui/LanguageToggle.svelte';
 	import AudioControls from '$lib/components/ui/AudioControls.svelte';
-	import AnimationCulturalDictionary from '$lib/components/ui/AnimationCulturalDictionary.svelte';
-	import AnimationParentTip from '$lib/components/ui/AnimationParentTip.svelte';
+	import CulturalDictionaryPanel from '$lib/components/ui/CulturalDictionaryPanel.svelte';
+	import ParentTipPanel from '$lib/components/ui/ParentTipPanel.svelte';
 	import TigerSpeechBubble from '$lib/components/ui/TigerSpeechBubble.svelte';
 	import CharacterClickZones from '$lib/components/ui/CharacterClickZones.svelte';
 	import StepSlider from '$lib/components/ui/StepSlider.svelte';
 	import Tiger from '$lib/components/scene/Tiger.svelte';
+	import Mother from '$lib/components/scene/Mother.svelte';
 	import RiceCakes from '$lib/components/scene/RiceCakes.svelte';
 	import { sceneStore } from '$lib/stores/sceneStore';
 	import { languageStore } from '$lib/stores/languageStore';
@@ -92,7 +93,6 @@
 </script>
 
 <div class="scene-page" onpointerdown={handleRightHalfClick}>
-	<StepSlider />
 	<AnimationIntroVideo />
 	{#if step !== 'initial'}
 		<VideoPlayer />
@@ -114,6 +114,7 @@
 	{/if}
 	{#if step !== 'initial'}
 		<Tiger />
+		<Mother />
 	{/if}
 	{#if step === 'riceCakeVisible'}
 		<RiceCakes />
@@ -122,10 +123,14 @@
 	<AnimationNarrationManager />
 	<TigerSpeechBubble />
 	<CharacterClickZones />
-	<LanguageToggle />
-	<AudioControls />
-	<AnimationCulturalDictionary />
-	<AnimationParentTip />
+	<!-- Above AnimationIntroVideo (z-index 1000) so dictionary, parent tips, and controls work during intro -->
+	<div class="animation-overlay-ui">
+		<StepSlider />
+		<LanguageToggle />
+		<AudioControls />
+		<CulturalDictionaryPanel entries={animationData.culturalDictionary} />
+		<ParentTipPanel tips={animationData.parentTips} mode="animation" showDuringIntro={true} />
+	</div>
 </div>
 
 <style>
@@ -137,6 +142,17 @@
 		margin: 0;
 		padding: 0;
 		background: black;
+	}
+
+	.animation-overlay-ui {
+		position: fixed;
+		inset: 0;
+		z-index: 1100;
+		pointer-events: none;
+	}
+
+	.animation-overlay-ui > :global(*) {
+		pointer-events: auto;
 	}
 
 	.interaction-overlay {

@@ -11,11 +11,13 @@
 {@render children()}
 
 <style>
+	:global(html),
 	:global(body) {
 		margin: 0;
 		padding: 0;
 		overflow: hidden;
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+		background: black;
 	}
 
 	:global(*) {

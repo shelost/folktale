@@ -107,13 +107,13 @@ $connector-active-bg: $primary;
 	top: 12px;
 	left: 50%;
 	transform: translateX(-50%);
-	background: rgba(255, 255, 255, 0.95);
+	background: rgba(0, 0, 0, 0.7);
 	backdrop-filter: blur(10px);
 	border-radius: 60px;
-	border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+	border: 1px solid rgba(255, 255, 255, 0.2);
 	padding: 12px 20px;
 	z-index: 10;
-	box-shadow: -12px 24px 48px rgba(black, .25);
+	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
 
 	@media (max-width: 768px) {
 		padding: 8px 12px;

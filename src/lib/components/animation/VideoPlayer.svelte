@@ -181,7 +181,7 @@
 		width: 100vw;
 		height: 100vh;
 		z-index: 1;
-		background: #2d5016;
+		background: black;
 		display: flex;
 		align-items: center;
 		justify-content: center;

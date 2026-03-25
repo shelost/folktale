@@ -58,7 +58,7 @@
 		role="region"
 		aria-label="Tiger speech"
 	>
-		<img src="bubble.png" alt="Tiger speech bubble" class="speech-bubble-image">
+		<img src="/bubble.png" alt="Tiger speech bubble" class="speech-bubble-image">
 	</div>
 {/if}
 
@@ -83,7 +83,7 @@
 		background-size: contain;
 		background-repeat: no-repeat;
 		background-position: center;
-		position: relative;;p0, .o0k894  ;
+		position: relative;
 		width: 100%;
 		min-height: 400px;
 		display: flex;

@@ -68,11 +68,22 @@ export interface Interaction {
 export interface CulturalDictionaryEntry {
 	term: string;
 	definition: BilingualText;
+	/** Root-relative path under static/, e.g. `/tteok.png` */
+	image?: string;
 }
 
 export interface ParentTip {
 	text: BilingualText;
 	trigger: string;
+	/** Pedagogical purpose; switches with language toggle */
+	description?: BilingualText;
+}
+
+/** Book page art mapped to a story step (for future UI integration) */
+export interface BookIllustration {
+	step: string;
+	image: string;
+	alt: BilingualText;
 }
 
 export interface SceneData {
@@ -94,6 +105,7 @@ export interface SceneData {
 	interactions: Interaction[];
 	culturalDictionary: CulturalDictionaryEntry[];
 	parentTips: ParentTip[];
+	bookIllustrations?: BookIllustration[];
 }
 
 export interface SceneState {
