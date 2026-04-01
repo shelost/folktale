@@ -7,7 +7,13 @@
 	import type { SceneState, RiceCakeState } from '$lib/types/scene';
 
 	let scene = $state<SceneState | null>(null);
-	let interactionState = $state({ dragging: false, dragItem: null, dragPosition: null, completedInteractions: [], riceCakesFed: 0 });
+	let interactionState = $state<SceneState['interactionState']>({
+		dragging: false,
+		dragItem: null,
+		dragPosition: null,
+		completedInteractions: [],
+		riceCakesFed: 0
+	});
 	let draggingCakeId = $state<string | null>(null);
 	let dragOffset = $state({ x: 0, y: 0 });
 	let hoveredCakeId = $state<string | null>(null);
@@ -17,7 +23,13 @@
 	});
 
 	const unsubscribeInteraction = interactionStore.subscribe((state) => {
-		interactionState = state;
+		interactionState = {
+			dragging: state.dragging,
+			dragItem: state.dragItem,
+			dragPosition: state.dragPosition,
+			completedInteractions: state.completedInteractions,
+			riceCakesFed: state.riceCakesFed ?? 0
+		};
 	});
 
 	function handlePointerDown(e: PointerEvent, riceCake: RiceCakeState) {
@@ -84,15 +96,7 @@
 						completeInteraction(`feed-tiger-${draggingCakeId}`);
 						endDrag();
 						draggingCakeId = null;
-						
-						// Check if the rice cake has been fed (only 1 rice cake now)
-						setTimeout(() => {
-							sceneStore.subscribe((updatedState) => {
-								if (updatedState.interactionState.riceCakesFed >= 1) {
-									nextStep();
-								}
-							})();
-						}, 100);
+						nextStep();
 						return;
 					}
 				}

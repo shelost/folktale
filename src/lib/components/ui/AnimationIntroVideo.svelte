@@ -3,38 +3,26 @@
 	import { currentStep, nextStep } from '$lib/stores/stepStore';
 	import { triggerSceneEvent } from '$lib/stores/sceneStore';
 	import { languageStore } from '$lib/stores/languageStore';
+	import BookIntroThree from '$lib/components/ui/BookIntroThree.svelte';
 	import type { SceneStep } from '$lib/stores/stepStore';
 	import type { Language } from '$lib/types/scene';
 
 	let step = $state<SceneStep>('initial');
 	let language: Language = $state('kr');
-	let videoElement: HTMLVideoElement | null = $state(null);
-	let showVideo = $state(true); // Show video by default (as background)
-	let hasStarted = $state(false);
-	let videoPlaying = $state(false);
+	let isOpeningBook = $state(false);
+	let hasOpenedBook = $state(false);
+	let hasEnteredStory = $state(false);
+	let blackOverlayActive = $state(false);
 
 	const unsubscribeStep = currentStep.subscribe((s) => {
 		const previousStep = step;
 		step = s;
-		
-		// Reset if navigating back to initial
+
 		if (s === 'initial' && previousStep !== 'initial') {
-			hasStarted = false;
-			showVideo = true; // Always show video as background
-			if (videoElement) {
-				videoElement.currentTime = 0;
-				videoElement.play().catch((error) => {
-					console.error('Error playing intro video:', error);
-				});
-			}
-		} else if (s === 'initial') {
-			// On initial step, show video as background and play it
-			showVideo = true;
-			if (videoElement && !videoPlaying) {
-				videoElement.play().catch((error) => {
-					console.error('Error playing intro video:', error);
-				});
-			}
+			isOpeningBook = false;
+			hasOpenedBook = false;
+			hasEnteredStory = false;
+			blackOverlayActive = false;
 		}
 	});
 
@@ -42,107 +30,80 @@
 		language = lang;
 	});
 
-	function handlePlayClick() {
-		hasStarted = true;
-		showVideo = true; // Video is already visible and playing
-		
-		// When play button is clicked, advance to next step immediately
-		// Video is already playing in the background
+	function handleBookClick() {
+		if (isOpeningBook) return;
+		isOpeningBook = true;
+		hasEnteredStory = false;
+
+		const prefersReducedMotion =
+			typeof window !== 'undefined' &&
+			window.matchMedia &&
+			window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		if (prefersReducedMotion) {
+			hasOpenedBook = true;
+			blackOverlayActive = true;
+			setTimeout(() => {
+				enterStory();
+				setTimeout(() => {
+					blackOverlayActive = false;
+				}, 200);
+			}, 120);
+			return;
+		}
+
+		setTimeout(() => {
+			enterStory();
+		}, 3800);
+	}
+
+	function enterStory() {
+		if (hasEnteredStory || step !== 'initial') return;
+		hasEnteredStory = true;
 		nextStep();
 		triggerSceneEvent('tigerAppears');
 	}
 
-	function handleVideoEnded() {
-		// Video loops, so this won't be called unless loop is disabled
-		// But if it does end, don't auto-advance (user must click play button)
-	}
+	function handleThreeComplete() {
+		hasOpenedBook = true;
+		blackOverlayActive = true;
 
-	function handleVideoLoaded() {
-		// Video loaded - start playing automatically
-		if (videoElement && step === 'initial') {
-			videoElement.currentTime = 0;
-			videoElement.play().catch((error) => {
-				console.error('Error auto-playing intro video:', error);
-				// If autoplay fails (e.g., browser policy), try muted autoplay as fallback
-				if (error.name === 'NotAllowedError') {
-					videoElement.muted = true;
-					videoElement.play().then(() => {
-						videoPlaying = true;
-						// Unmute after it starts playing
-						setTimeout(() => {
-							if (videoElement) {
-								videoElement.muted = false;
-							}
-						}, 500);
-					}).catch((mutedError) => {
-						console.error('Error playing muted video:', mutedError);
-					});
-				}
-			}).then(() => {
-				videoPlaying = true;
-				// Unmute after video starts (if it was muted for autoplay)
-				setTimeout(() => {
-					if (videoElement) {
-						videoElement.muted = false;
-					}
-				}, 500);
-			});
-		}
+		setTimeout(() => {
+			enterStory();
+			setTimeout(() => {
+				blackOverlayActive = false;
+			}, 200);
+		}, 450);
 	}
 
 	onMount(() => {
-		showVideo = true; // Show video by default as background
-		hasStarted = false; // Play button hasn't been clicked yet
-		videoPlaying = false; // Will be set to true when video starts playing
+		isOpeningBook = false;
+		hasOpenedBook = false;
+		hasEnteredStory = false;
+		blackOverlayActive = false;
 	});
 
 	onDestroy(() => {
 		unsubscribeStep();
 		unsubscribeLang();
-		if (videoElement) {
-			videoElement.pause();
-			videoElement = null;
-		}
 	});
 </script>
 
 {#if step === 'initial'}
 	<div class="intro-container">
-		{#if !hasStarted}
-			<!-- Play button overlay with title -->
-			<div class="play-button-overlay">
-				<div class="title-container">
-					<img src="/haetnim.png" alt="햇님달님" class="title-image">
-				</div>
-				<button class="play-button" onpointerdown={handlePlayClick} aria-label={language === 'kr' ? '시작하기' : 'Start'}>
-					<span class="play-icon">▶</span>
-					<span class="play-text">{language === 'kr' ? '시작하기' : 'Start'}</span>
-				</button>
+		<div class="book-overlay">
+			<div class="click-hint" class:hidden={isOpeningBook}>
+				<span>{language === 'kr' ? '클릭하여 열기' : 'Click to open'}</span>
 			</div>
-		{/if}
-		
-		<!-- Video player (always visible as background, paused until play button is clicked) -->
-		<div class="intro-video-container">
-			<video
-				bind:this={videoElement}
-				src="/mountains.mp4"
-				class="intro-video"
-				autoplay
-				playsinline
-				loop
-				onended={handleVideoEnded}
-				onloadeddata={handleVideoLoaded}
-			/>
+			<div class="book-stage" class:opened={hasOpenedBook}>
+				<BookIntroThree opening={isOpeningBook} onComplete={handleThreeComplete} onClick={handleBookClick} />
+			</div>
 		</div>
 	</div>
 {/if}
 
+<div class="black-overlay" class:active={blackOverlayActive}></div>
+
 <style>
-
-	.title-image{
-		height: 360px;
-	}
-
 	.intro-container {
 		position: fixed;
 		top: 0;
@@ -153,7 +114,7 @@
 		background: #000;
 	}
 
-	.play-button-overlay {
+	.book-overlay {
 		position: absolute;
 		top: 0;
 		left: 0;
@@ -163,115 +124,85 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		background: rgba(0, 0, 0, 0.7);
-		gap: 40px;
-		z-index: 10; /* Above the video */
+		background: radial-gradient(circle at 50% 45%, rgba(80, 50, 25, 0.25) 0%, rgba(0, 0, 0, 0.6) 65%);
+		z-index: 10;
 	}
 
-	.title-container {
-		display: flex;
-		align-items: center;
-		justify-content: center;
+	.book-stage {
+		display: grid;
+		place-items: center;
+		z-index: 11;
+		transition: opacity 0.35s ease;
 	}
 
-	.story-title {
-		font-size: 4rem;
-		font-weight: 900;
-		color: #ffce00;
-		text-shadow: 
-			3px 3px 0px #000,
-			-1px -1px 0px #000,
-			1px -1px 0px #000,
-			-1px 1px 0px #000,
-			0 0 20px rgba(255, 206, 0, 0.5);
-		margin: 0;
-		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-		letter-spacing: 0.05em;
-		animation: titleGlow 2s ease-in-out infinite;
+	.book-stage.opened {
+		opacity: 0;
 	}
 
-	@keyframes titleGlow {
+	.click-hint {
+		position: absolute;
+		top: 16%;
+		left: 50%;
+		transform: translateX(-50%);
+		z-index: 12;
+		animation: hint-float 2.8s ease-in-out infinite;
+		transition: opacity 0.35s ease;
+		pointer-events: none;
+	}
+
+	.click-hint.hidden {
+		opacity: 0;
+	}
+
+	.click-hint span {
+		font-family: 'Nanum Myeongjo', 'AppleMyungjo', 'Times New Roman', serif;
+		font-size: 1.15rem;
+		font-weight: 500;
+		color: rgba(255, 235, 200, 0.8);
+		letter-spacing: 0.06em;
+		text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+		white-space: nowrap;
+	}
+
+	@keyframes hint-float {
 		0%, 100% {
-			text-shadow: 
-				3px 3px 0px #000,
-				-1px -1px 0px #000,
-				1px -1px 0px #000,
-				-1px 1px 0px #000,
-				0 0 20px rgba(255, 206, 0, 0.5);
+			transform: translateX(-50%) translateY(0);
 		}
 		50% {
-			text-shadow: 
-				3px 3px 0px #000,
-				-1px -1px 0px #000,
-				1px -1px 0px #000,
-				-1px 1px 0px #000,
-				0 0 30px rgba(255, 206, 0, 0.8);
+			transform: translateX(-50%) translateY(-10px);
 		}
 	}
 
-	.play-button {
-		background: #ffce00;
-		color: black;
-		border: 4px solid black;
-		border-radius: 80px;
-		padding: 24px 48px;
-		cursor: pointer;
-		font-size: 32px;
-		font-weight: 900;
-		display: flex;
-		align-items: center;
-		gap: 16px;
-		transition: transform 0.2s, box-shadow 0.2s;
-		box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
-		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	.black-overlay {
+		position: fixed;
+		inset: 0;
+		background: #000;
+		z-index: 2000;
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 0.6s ease;
 	}
 
-	.play-button:hover {
-		transform: scale(1.1);
-		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+	.black-overlay.active {
+		opacity: 1;
+		transition: opacity 0.4s ease;
 	}
 
-	.play-button:active {
-		transform: scale(0.95);
+	@media (prefers-reduced-motion: reduce) {
+		.book-stage {
+			transition: none;
+		}
+		.black-overlay {
+			transition: none;
+		}
+		.click-hint {
+			animation: none;
+		}
 	}
-
-	.play-icon {
-		font-size: 1.5em;
-		line-height: 1;
-	}
-
-	.play-text {
-		font-size: 1em;
-	}
-
-	.intro-video-container {
-		position: absolute;
-		top: 0;
-		left: 0;
-		width: 100%;
-		height: 100%;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		z-index: 1; /* Below the play button overlay */
-	}
-
-	.intro-video {
-		width: 100%;
-		height: 100%;
-		object-fit: contain;
-	}
-
 
 	@media (max-width: 768px) {
-		.story-title {
-			font-size: 2.5rem;
-		}
-		
-		.play-button {
-			font-size: 24px;
-			padding: 20px 40px;
+		.click-hint span {
+			font-size: 1rem;
 		}
 	}
 </style>
-

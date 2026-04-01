@@ -233,9 +233,9 @@
 		width: 64px;
 		height: 64px;
 		border-radius: 50%;
-		background: linear-gradient(135deg, #fff8dc 0%, #ffe4b5 100%);
-		border: 3px solid #d4a574;
-		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+		background: linear-gradient(180deg, var(--storybook-paper) 0%, var(--storybook-paper-dark) 100%);
+		border: 3px solid var(--storybook-border);
+		box-shadow: 0 4px 20px rgba(38, 23, 10, 0.35);
 		cursor: pointer;
 		display: flex;
 		align-items: center;
@@ -267,8 +267,8 @@
 	}
 
 	.parent-tip-content {
-		background: linear-gradient(135deg, #fff8dc 0%, #ffe4b5 100%);
-		border: 3px solid #d4a574;
+		background: linear-gradient(180deg, var(--storybook-paper) 0%, #ead7b1 100%);
+		border: 3px solid var(--storybook-border);
 		border-radius: 12px;
 		padding: 20px;
 		max-width: 420px;
@@ -292,7 +292,8 @@
 		margin: 0;
 		font-size: 1.2rem;
 		font-weight: bold;
-		color: #8b4513;
+		color: var(--storybook-ink);
+		font-family: 'Nanum Myeongjo', 'AppleMyungjo', 'Times New Roman', serif;
 	}
 
 	.parent-tip-badge {
@@ -308,9 +309,10 @@
 
 	.parent-tip-text {
 		margin: 0 0 12px 0;
-		color: #333;
+		color: #3d2b1a;
 		line-height: 1.6;
 		font-size: 1rem;
+		font-family: 'Nanum Myeongjo', 'AppleMyungjo', 'Times New Roman', serif;
 	}
 
 	.parent-tip-purpose-label {
@@ -343,9 +345,9 @@
 		width: 36px;
 		height: 36px;
 		border-radius: 8px;
-		border: 2px solid #d4a574;
-		background: white;
-		color: #8b4513;
+		border: 2px solid var(--storybook-border);
+		background: #f7ecd2;
+		color: var(--storybook-ink);
 		font-size: 1.4rem;
 		line-height: 1;
 		cursor: pointer;
@@ -356,7 +358,7 @@
 	}
 
 	.parent-tip-nav-btn:hover {
-		background: #fff8dc;
+		background: #efe0bc;
 	}
 
 	.parent-tip-dots {
@@ -378,7 +380,7 @@
 	}
 
 	.parent-tip-dot.active {
-		background: #8b4513;
+		background: var(--storybook-accent);
 		transform: scale(1.15);
 	}
 
@@ -391,9 +393,9 @@
 
 	.parent-tip-close {
 		width: 100%;
-		background: #8b4513;
-		color: white;
-		border: none;
+		background: var(--storybook-accent);
+		color: #f9ecd4;
+		border: 1px solid #5b1f13;
 		border-radius: 6px;
 		padding: 8px;
 		cursor: pointer;
@@ -403,7 +405,7 @@
 	}
 
 	.parent-tip-close:hover {
-		background: #a0522d;
+		background: #8a3a28;
 	}
 
 	@keyframes slideInFromRight {

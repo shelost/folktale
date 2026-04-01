@@ -3,6 +3,7 @@
 	import { currentStep } from '$lib/stores/stepStore';
 	import { languageStore } from '$lib/stores/languageStore';
 	import { currentSubtitleIndex as subtitleIndexStore } from '$lib/stores/subtitleStore';
+	import { narrationElement } from '$lib/stores/audioStore';
 	import { animationData } from '$lib/data/animation';
 	import type { Language } from '$lib/types/scene';
 
@@ -10,6 +11,9 @@
 	let language: Language = $state('kr');
 	let subtitle = $state<string | null>(null);
 	let currentSubtitleIndex = $state(0);
+	let activeWordIndex = $state(0);
+	let detachNarrationListeners: (() => void) | null = null;
+	const AUDIO_SYNC_OFFSET_MS = 120;
 
 	// Keywords to highlight with their colors
 	const keywordStyles: Record<string, { kr: string; en: string; color: string }> = {
@@ -39,61 +43,155 @@
 		return subtitleEntry.text[lang] || null;
 	}
 
-	// Function to highlight keywords in the subtitle text
-	function highlightKeywords(text: string, lang: Language): string {
-		let result = text;
-		
-		for (const key in keywordStyles) {
-			const keyword = keywordStyles[key];
-			const word = lang === 'kr' ? keyword.kr : keyword.en;
-			const color = keyword.color;
-			
-			// Case-insensitive replacement for English
-			if (lang === 'en') {
-				const regex = new RegExp(`(${word})`, 'gi');
-				result = result.replace(regex, `<span class="keyword" style="color: ${color}; font-weight: 700;">$1</span>`);
-			} else {
-				// Korean doesn't need case-insensitive
-				result = result.replace(
-					new RegExp(word, 'g'),
-					`<span class="keyword" style="color: ${color}; font-weight: 700;">${word}</span>`
-				);
-			}
-		}
-		
-		return result;
+	function splitWords(text: string): string[] {
+		return text.trim().split(/\s+/).filter(Boolean);
 	}
 
-	// Derived state for highlighted subtitle
-	const highlightedSubtitle = $derived(subtitle ? highlightKeywords(subtitle, language) : null);
+	function getWordStyle(word: string, lang: Language): string {
+		const normalizedWord = word.toLowerCase().replace(/[.,!?'"()]/g, '');
+		for (const key in keywordStyles) {
+			const keyword = keywordStyles[key];
+			const keywordText = (lang === 'kr' ? keyword.kr : keyword.en).toLowerCase();
+			if (normalizedWord.includes(keywordText)) {
+				return `color: ${keyword.color};`;
+			}
+		}
+		return '';
+	}
+
+	function resetWordHighlight() {
+		activeWordIndex = 0;
+	}
+
+	function tokenizeForTiming(text: string): string[] {
+		return text.trim().split(/\s+/).filter(Boolean);
+	}
+
+	function hasPausePunctuation(token: string): boolean {
+		return /[,.!?;:~…]$/.test(token);
+	}
+
+	function computeTokenWeight(token: string, lang: Language): number {
+		const cleaned = token.replace(/[“”"(){}\[\]]/g, '');
+		const charCount = cleaned.length;
+		const isShort = charCount <= 1;
+		const punctuationBonus = hasPausePunctuation(token) ? 0.95 : 0;
+		const quoteBonus = /['"`]/.test(token) ? 0.2 : 0;
+
+		if (lang === 'kr') {
+			const base = Math.max(0.55, charCount * 0.9);
+			return base + punctuationBonus + quoteBonus + (isShort ? -0.12 : 0);
+		}
+
+		const base = Math.max(0.5, charCount * 0.62);
+		return base + punctuationBonus + quoteBonus + (isShort ? -0.08 : 0);
+	}
+
+	function buildCumulativeTiming(wordsValue: string[], lang: Language): number[] {
+		if (wordsValue.length === 0) return [];
+		const rawWeights = wordsValue.map((word) => computeTokenWeight(word, lang));
+		const total = rawWeights.reduce((sum, weight) => sum + weight, 0);
+		if (total <= 0) return wordsValue.map((_, i) => (i + 1) / wordsValue.length);
+
+		let running = 0;
+		return rawWeights.map((weight) => {
+			running += weight;
+			return running / total;
+		});
+	}
+
+	function detachNarration() {
+		if (detachNarrationListeners) {
+			detachNarrationListeners();
+			detachNarrationListeners = null;
+		}
+	}
+
+	function attachNarration(audio: HTMLAudioElement | null) {
+		detachNarration();
+		if (!audio) return;
+
+		const syncWordFromAudio = () => {
+			const count = words.length;
+			if (count <= 1) {
+				activeWordIndex = 0;
+				return;
+			}
+			const duration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 0;
+			if (!duration) return;
+			const offsetSeconds = AUDIO_SYNC_OFFSET_MS / 1000;
+			const effectiveTime = Math.min(duration, Math.max(0, audio.currentTime + offsetSeconds));
+			const ratio = Math.min(0.999, Math.max(0, effectiveTime / duration));
+			const index = cumulativeTiming.findIndex((boundary) => ratio <= boundary);
+			activeWordIndex = index === -1 ? count - 1 : index;
+		};
+
+		const handleEnded = () => {
+			activeWordIndex = Math.max(0, words.length - 1);
+		};
+
+		audio.addEventListener('timeupdate', syncWordFromAudio);
+		audio.addEventListener('loadedmetadata', syncWordFromAudio);
+		audio.addEventListener('play', syncWordFromAudio);
+		audio.addEventListener('ended', handleEnded);
+
+		detachNarrationListeners = () => {
+			audio.removeEventListener('timeupdate', syncWordFromAudio);
+			audio.removeEventListener('loadedmetadata', syncWordFromAudio);
+			audio.removeEventListener('play', syncWordFromAudio);
+			audio.removeEventListener('ended', handleEnded);
+		};
+	}
+
+	const words = $derived(subtitle ? splitWords(subtitle) : []);
+	const cumulativeTiming = $derived(buildCumulativeTiming(tokenizeForTiming(subtitle ?? ''), language));
 
 	const unsubscribeStep = currentStep.subscribe((s) => {
 		step = s;
 		currentSubtitleIndex = 0; // Reset index when step changes
 		subtitle = getSubtitleForStep(s, language, 0);
+		resetWordHighlight();
 	});
 
 	const unsubscribeLang = languageStore.subscribe((lang) => {
 		language = lang;
 		subtitle = getSubtitleForStep(step, lang, currentSubtitleIndex);
+		resetWordHighlight();
 	});
 
 	const unsubscribeSubtitleIndex = subtitleIndexStore.subscribe((index) => {
 		currentSubtitleIndex = index;
 		// Update subtitle when index changes (for steps with multiple captions like motherFalls)
 		subtitle = getSubtitleForStep(step, language, index);
+		resetWordHighlight();
+	});
+
+	const unsubscribeNarration = narrationElement.subscribe((audio) => {
+		attachNarration(audio);
 	});
 
 	onDestroy(() => {
+		detachNarration();
 		unsubscribeStep();
 		unsubscribeLang();
 		unsubscribeSubtitleIndex();
+		unsubscribeNarration();
 	});
 </script>
 
-{#if highlightedSubtitle}
+{#if words.length > 0}
 	<div class="subtitle-overlay" role="region" aria-live="polite" aria-label="Subtitle">
-		<p class="subtitle-text">{@html highlightedSubtitle}</p>
+		<p class="subtitle-text">
+			{#each words as word, index (index)}
+				<span
+					class="subtitle-word"
+					class:active-word={index === activeWordIndex}
+					style={getWordStyle(word, language)}
+				>
+					{word}
+				</span>{' '}
+			{/each}
+		</p>
 	</div>
 {/if}
 
@@ -103,12 +201,13 @@
 		bottom: 100px;
 		left: 50%;
 		transform: translateX(-50%);
-		backdrop-filter: blur(10px);
-		background: rgba(0, 0, 0, 0.85);
-		box-shadow: -4px 18px 24px 0 rgba(0, 0, 0, 0.6);
-		color: white;
+		backdrop-filter: blur(4px);
+		background: linear-gradient(180deg, rgba(242, 229, 200, 0.95) 0%, rgba(230, 212, 174, 0.95) 100%);
+		box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+		color: var(--storybook-ink);
 		padding: 20px 32px;
-		border-radius: 12px;
+		border-radius: 10px;
+		border: 2px solid var(--storybook-border);
 		max-width: 85%;
 		text-align: center;
 		z-index: 100;
@@ -130,15 +229,23 @@
 
 	.subtitle-text {
 		margin: 0;
-		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-		font-weight: 500;
-		text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+		font-family: 'Nanum Myeongjo', 'AppleMyungjo', 'Times New Roman', serif;
+		font-weight: 600;
+		text-shadow: none;
 	}
 
-	/* Keyword highlight styles */
-	.subtitle-text :global(.keyword) {
-		text-shadow: 0 0 10px currentColor, 1px 1px 2px rgba(0, 0, 0, 0.5);
-		transition: all 0.2s ease;
+	.subtitle-word {
+		transition: all 0.18s ease;
+		display: inline-block;
+		opacity: 1;
+		padding: 0.02em 0.12em;
+		border-radius: 0.2em;
+	}
+
+	.subtitle-word.active-word {
+		background: rgba(255, 208, 120, 0.45);
+		box-shadow: 0 0 0 1px rgba(171, 116, 45, 0.28) inset;
+		transform: translateY(-1px);
 	}
 
 	@media (max-width: 768px) {

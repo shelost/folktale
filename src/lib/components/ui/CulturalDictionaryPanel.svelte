@@ -76,9 +76,9 @@
 		position: fixed;
 		top: 20px;
 		left: 20px;
-		background: rgba(255, 255, 255, 0.9);
-		border: 2px solid #333;
-		border-radius: 8px;
+		background: linear-gradient(180deg, var(--storybook-paper) 0%, var(--storybook-paper-dark) 100%);
+		border: 2px solid var(--storybook-border);
+		border-radius: 999px;
 		padding: 8px 12px;
 		cursor: pointer;
 		font-size: 1.5rem;
@@ -86,10 +86,11 @@
 		transition:
 			transform 0.2s,
 			background-color 0.2s;
+		box-shadow: 0 4px 10px rgba(38, 23, 10, 0.25);
 	}
 
 	.dictionary-toggle:hover {
-		background: rgba(255, 255, 255, 1);
+		background: linear-gradient(180deg, #f7ecd4 0%, #e9d8b5 100%);
 		transform: scale(1.1);
 	}
 
@@ -114,8 +115,9 @@
 		width: min(500px, calc(100vw - 32px));
 		height: min(560px, 80vh);
 		max-height: 80vh;
-		background: white;
+		background: linear-gradient(180deg, var(--storybook-paper) 0%, #efe0bd 100%);
 		border-radius: 12px;
+		border: 2px solid var(--storybook-border);
 		padding: 24px;
 		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 		box-sizing: border-box;
@@ -127,7 +129,8 @@
 		margin: 0 0 16px 0;
 		font-size: 1.5rem;
 		font-weight: bold;
-		color: #333;
+		color: var(--storybook-ink);
+		font-family: 'Nanum Myeongjo', 'AppleMyungjo', 'Times New Roman', serif;
 	}
 
 	.dictionary-scroll {
@@ -155,10 +158,10 @@
 	}
 
 	.dictionary-card {
-		border: 2px solid #ddd;
+		border: 2px solid var(--storybook-border);
 		border-radius: 8px;
 		overflow: hidden;
-		background: #fafafa;
+		background: #f8edd3;
 	}
 
 	.dictionary-term-heading {
@@ -166,14 +169,14 @@
 		padding: 12px 14px;
 		font-size: 1.1rem;
 		font-weight: 700;
-		color: #333;
-		background: #fff8dc;
-		border-bottom: 2px solid #d4a574;
+		color: var(--storybook-ink);
+		background: #efe0bb;
+		border-bottom: 2px solid var(--storybook-border);
 	}
 
 	.dictionary-detail {
 		padding: 12px 14px 14px;
-		background: #fff;
+		background: #fbf3df;
 	}
 
 	.dictionary-image {
@@ -190,19 +193,20 @@
 	.dictionary-definition {
 		margin: 0;
 		padding: 12px;
-		background: #f9f9f9;
+		background: #f6ebd2;
 		border-radius: 6px;
-		color: #555;
+		color: #4c3722;
 		line-height: 1.6;
+		font-family: 'Nanum Myeongjo', 'AppleMyungjo', 'Times New Roman', serif;
 	}
 
 	.dictionary-close {
 		flex-shrink: 0;
 		margin-top: 16px;
 		width: 100%;
-		background: #333;
-		color: white;
-		border: none;
+		background: var(--storybook-accent);
+		color: #f9ecd4;
+		border: 1px solid #5b1f13;
 		border-radius: 6px;
 		padding: 12px;
 		cursor: pointer;
@@ -212,6 +216,6 @@
 	}
 
 	.dictionary-close:hover {
-		background: #555;
+		background: #8a3a28;
 	}
 </style>

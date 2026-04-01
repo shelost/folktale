@@ -77,7 +77,7 @@ export const animationData: SceneData = {
 			fed: false
 		},
 		riceCakes: [
-			{ id: 'riceCake-1', x: 300, y: 500, width: 120, height: 90, visible: false, draggable: false, color: '#fff8dc', fed: false }
+			{ id: 'riceCake-1', x: 250, y: 420, width: 120, height: 90, visible: false, draggable: false, color: '#fff8dc', fed: false }
 		]
 	},
 	interactions: [

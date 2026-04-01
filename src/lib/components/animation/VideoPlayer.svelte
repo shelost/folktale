@@ -1,20 +1,19 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
 	import { currentStep } from '$lib/stores/stepStore';
-	import { currentSubtitleIndex } from '$lib/stores/subtitleStore';
 	import type { SceneStep } from '$lib/stores/stepStore';
 
 	let step = $state<SceneStep>('initial');
 	let videoElement: HTMLVideoElement | null = $state(null);
 	let currentVideoSrc = $state<string | null>(null);
-	let subtitleIndex = $state(0);
+	let motherFallsClipIndex = $state(0);
 
 	// Map steps to video files - all videos in consecutive order
 	// Note: 'initial' step uses AnimationIntroVideo component with mountains.mp4
-	// motherFalls is now a combined step that shows tiger_2.mp4 and tiger_3.mp4 sequentially
+	// motherFalls uses tiger_2 then tiger_3 in sequence.
 	const stepToVideoMap: Record<string, string> = {
 		'tigerAppears': '/tiger_1.mp4',
-		'motherFalls': '/tiger_2.mp4', // Combined step: will show tiger_2.mp4, then tiger_3.mp4 (via subtitle index)
+		'motherFalls': '/tiger_2.mp4',
 		'riceCakeVisible': '/tiger_4.mp4',
 		'tigerEats': '/tiger_4.mp4', // Keep showing the last video
 		'complete': '/tiger_4.mp4' // Keep showing the last video
@@ -22,54 +21,50 @@
 
 	const unsubscribeStep = currentStep.subscribe((s) => {
 		step = s;
-		updateVideoSrc(s, subtitleIndex);
+		if (s !== 'motherFalls') {
+			motherFallsClipIndex = 0;
+		}
+		updateVideoSrc(s);
 
 		// Pause video for interaction step, but play for final step
 		if (videoElement && currentVideoSrc) {
+			const video = videoElement;
 			if (s === 'riceCakeVisible') {
 				// Pause and show freeze frame - don't let it play during interaction
-				videoElement.pause();
+				video.pause();
 				// Prevent autoplay by removing autoplay attribute temporarily
-				videoElement.removeAttribute('autoplay');
+				video.removeAttribute('autoplay');
 			} else if (s === 'tigerEats') {
 				// Play the final video when rice cake is dropped
-				videoElement.setAttribute('autoplay', '');
-				videoElement.play().catch((error) => {
+				video.setAttribute('autoplay', '');
+				video.play().catch((error) => {
 					console.error('Error playing final video:', error);
 					// If autoplay fails, try muted autoplay as fallback
 					if (error.name === 'NotAllowedError') {
-						videoElement.muted = true;
-						videoElement.play().catch((mutedError) => {
+						video.muted = true;
+						video.play().catch((mutedError) => {
 							console.error('Error playing muted final video:', mutedError);
 						});
 					}
 				});
 			} else if (s === 'complete') {
 				// Keep video paused on complete step (story finished)
-				videoElement.pause();
-				videoElement.removeAttribute('autoplay');
-			} else if (s !== 'riceCakeVisible' && s !== 'tigerEats' && s !== 'complete') {
+				video.pause();
+				video.removeAttribute('autoplay');
+			} else {
 				// Resume playing for other steps
-				videoElement.setAttribute('autoplay', '');
-				videoElement.play().catch((error) => {
+				video.setAttribute('autoplay', '');
+				video.play().catch((error) => {
 					console.error('Error playing video:', error);
 				});
 			}
 		}
 	});
 
-	function updateVideoSrc(stepValue: SceneStep, index: number) {
-		// For motherFalls step, switch videos based on subtitle index
+	function updateVideoSrc(stepValue: SceneStep) {
+		// For motherFalls, keep both clips contiguous by switching on `onended`.
 		if (stepValue === 'motherFalls') {
-			if (index === 0) {
-				// First caption (1.0) - show tiger_2.mp4
-				currentVideoSrc = '/tiger_2.mp4';
-			} else if (index === 1) {
-				// Second caption (4.0) - show tiger_3.mp4
-				currentVideoSrc = '/tiger_3.mp4';
-			} else {
-				currentVideoSrc = '/tiger_2.mp4'; // Default to tiger_2.mp4
-			}
+			currentVideoSrc = motherFallsClipIndex === 0 ? '/tiger_2.mp4' : '/tiger_3.mp4';
 		} else {
 			const videoSrc = stepToVideoMap[stepValue];
 			if (videoSrc) {
@@ -80,44 +75,30 @@
 		}
 	}
 
-	const unsubscribeSubtitleIndex = currentSubtitleIndex.subscribe((index) => {
-		subtitleIndex = index;
-		// Update video when subtitle index changes (for motherFalls step)
-		if (step === 'motherFalls') {
-			const previousSrc = currentVideoSrc;
-			updateVideoSrc(step, index);
-			// If video src changed, trigger video reload
-			if (previousSrc !== currentVideoSrc && videoElement) {
-				videoElement.currentTime = 0;
-				videoElement.load();
-				// Play the new video
-				videoElement.play().catch((error) => {
-					console.error('Error playing video after subtitle change:', error);
-				});
-			}
-		}
-	});
-
 	function handleVideoEnded() {
-		// Video ended - narration manager will handle advancement
-		// Videos just play and stop, narration controls the flow
+		if (step === 'motherFalls' && motherFallsClipIndex === 0) {
+			motherFallsClipIndex = 1;
+			currentVideoSrc = '/tiger_3.mp4';
+			return;
+		}
 	}
 
 	function handleVideoLoaded() {
 		// Auto-play video when it's loaded, but NOT for interaction step
 		// For tigerEats step, we want to play the video
 		if (videoElement && currentVideoSrc) {
+			const video = videoElement;
 			if (step === 'riceCakeVisible' || step === 'complete') {
 				// Pause for interaction and complete steps
-				videoElement.pause();
+				video.pause();
 			} else {
 				// Play for other steps including tigerEats
-				videoElement.play().catch((error) => {
+				video.play().catch((error) => {
 					console.error('Error auto-playing video:', error);
 					// If autoplay fails (e.g., browser policy), try muted autoplay as fallback
 					if (error.name === 'NotAllowedError') {
-						videoElement.muted = true;
-						videoElement.play().catch((mutedError) => {
+						video.muted = true;
+						video.play().catch((mutedError) => {
 							console.error('Error playing muted video:', mutedError);
 						});
 					}
@@ -151,7 +132,6 @@
 
 	onDestroy(() => {
 		unsubscribeStep();
-		unsubscribeSubtitleIndex();
 		if (videoElement) {
 			videoElement.pause();
 			videoElement = null;
@@ -161,6 +141,7 @@
 
 {#if currentVideoSrc}
 	<div class="video-container">
+		<!-- svelte-ignore a11y_media_has_caption -->
 		<video
 			bind:this={videoElement}
 			src={currentVideoSrc}
@@ -169,7 +150,7 @@
 			playsinline
 			onended={handleVideoEnded}
 			onloadeddata={handleVideoLoaded}
-		/>
+		></video>
 	</div>
 {/if}
 

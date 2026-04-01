@@ -124,12 +124,12 @@
 	<TigerSpeechBubble />
 	<CharacterClickZones />
 	<!-- Above AnimationIntroVideo (z-index 1000) so dictionary, parent tips, and controls work during intro -->
-	<div class="animation-overlay-ui">
+	<div class="animation-overlay-ui" class:visible={step !== 'initial'}>
 		<StepSlider />
 		<LanguageToggle />
 		<AudioControls />
 		<CulturalDictionaryPanel entries={animationData.culturalDictionary} />
-		<ParentTipPanel tips={animationData.parentTips} mode="animation" showDuringIntro={true} />
+		<ParentTipPanel tips={animationData.parentTips} mode="animation" showDuringIntro={false} />
 	</div>
 </div>
 
@@ -149,9 +149,19 @@
 		inset: 0;
 		z-index: 1100;
 		pointer-events: none;
+		opacity: 0;
+		transform: translateY(-18px);
+		transition:
+			opacity 0.5s ease,
+			transform 0.5s ease;
 	}
 
-	.animation-overlay-ui > :global(*) {
+	.animation-overlay-ui.visible {
+		opacity: 1;
+		transform: translateY(0);
+	}
+
+	.animation-overlay-ui.visible > :global(*) {
 		pointer-events: auto;
 	}
 
@@ -178,17 +188,17 @@
 	}
 
 	.explainer-text {
-		background: linear-gradient(135deg, #fff8dc 0%, #ffe4b5 100%);
-		border: 3px solid #d4a574;
+		background: linear-gradient(180deg, var(--storybook-paper) 0%, var(--storybook-paper-dark) 100%);
+		border: 3px solid var(--storybook-border);
 		border-radius: 16px;
 		padding: 20px 32px;
 		font-size: 1.5rem;
 		font-weight: 600;
-		color: #8b4513;
+		color: var(--storybook-ink);
 		text-align: center;
-		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+		box-shadow: 0 8px 24px rgba(38, 23, 10, 0.4);
 		margin: 0;
-		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+		font-family: 'Nanum Myeongjo', 'AppleMyungjo', 'Times New Roman', serif;
 		white-space: nowrap;
 	}
 

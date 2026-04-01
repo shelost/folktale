@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { currentStep, nextStep, goToStep } from '$lib/stores/stepStore';
+	import { currentStep, nextStep } from '$lib/stores/stepStore';
 	import { triggerSceneEvent } from '$lib/stores/sceneStore';
 	import { languageStore } from '$lib/stores/languageStore';
 	import { animationData } from '$lib/data/animation';
@@ -21,6 +21,7 @@
 	let loading = $state(false);
 	let error = $state<string | null>(null);
 	let currentAudioURL: string | null = $state(null);
+	const prefetchCache = new Map<string, string>();
 
 	// Map steps to subtitle timings (matching AnimationSubtitleOverlay)
 	// motherFalls will show both captions (1.0 and 4.0) sequentially
@@ -47,6 +48,38 @@
 		const timings = stepToSubtitleMap[stepValue];
 		if (!timings || !Array.isArray(timings)) return 0;
 		return timings.length;
+	}
+
+	function getNarrationTextsForStep(stepValue: string, lang: Language): string[] {
+		const timings = stepToSubtitleMap[stepValue] ?? [];
+		return timings
+			.map((_, i) => getSubtitleForStep(stepValue, lang, i))
+			.filter((text): text is string => Boolean(text && text.trim()));
+	}
+
+	function getNextStepForPrefetch(stepValue: string): string | null {
+		const allSteps = ['initial', 'tigerAppears', 'motherFalls', 'riceCakeVisible', 'tigerEats', 'complete'];
+		const index = allSteps.indexOf(stepValue);
+		if (index === -1 || index >= allSteps.length - 1) return null;
+		return allSteps[index + 1];
+	}
+
+	async function prefetchNarration(stepValue: string, lang: Language): Promise<void> {
+		if (stepValue === 'initial' || stepValue === 'complete') return;
+		const texts = getNarrationTextsForStep(stepValue, lang);
+		if (texts.length === 0) return;
+		await Promise.all(
+			texts.map(async (text) => {
+				const cacheKey = `${lang}:${text}`;
+				if (prefetchCache.has(cacheKey)) return;
+				try {
+					const audioURL = await getAudioForText(text, lang);
+					prefetchCache.set(cacheKey, audioURL);
+				} catch (prefetchError) {
+					console.warn('Narration prefetch failed:', prefetchError);
+				}
+			})
+		);
 	}
 
 	function advanceToNextStep() {
@@ -105,17 +138,14 @@
 
 		const text = getSubtitleForStep(stepValue, lang);
 		
-		// If no narration text, auto-advance after a short delay
+		// If no narration text, auto-advance immediately
 		// BUT: if this is a manual change from initial to tigerAppears, don't auto-advance
 		if (!text || text.trim() === '') {
 			// If user manually started from initial, don't auto-advance from first step
 			if (isManualChange && stepValue === 'tigerAppears') {
 				return; 
 			}
-			// Auto-advance after pause delay for steps without narration
-			setTimeout(() => {
-				advanceToNextStep();
-			}, 2500); 
+			advanceToNextStep();
 			return;
 		}
 
@@ -124,7 +154,8 @@
 			error = null;
 
 			// Get audio URL (will use cache if available)
-			const audioURL = await getAudioForText(text, lang);
+			const cacheKey = `${lang}:${text}`;
+			const audioURL = prefetchCache.get(cacheKey) ?? (await getAudioForText(text, lang));
 			currentAudioURL = audioURL;
 
 			// Create and play audio element
@@ -136,11 +167,7 @@
 				if (stepValue === 'tigerEats') {
 					return; // Story complete, stop here
 				}
-				// Add a pause delay before advancing to next step
-				// This applies to all steps including tigerAppears (even if manually started)
-				setTimeout(() => {
-					advanceToNextStep();
-				}, 1500); // 1.5 second pause between slides
+				advanceToNextStep();
 			});
 
 			playNarration(audioElement);
@@ -154,9 +181,7 @@
 				// User manually started, stay on first step even if narration fails
 				return;
 			}
-			setTimeout(() => {
-				advanceToNextStep();
-			}, 1000);
+			advanceToNextStep();
 		}
 	}
 
@@ -164,9 +189,7 @@
 		const subtitleCount = getSubtitleCountForStep(stepValue);
 		if (subtitleCount === 0) {
 			// No narrations, auto-advance
-			setTimeout(() => {
-				advanceToNextStep();
-			}, 2500);
+			advanceToNextStep();
 			return;
 		}
 
@@ -188,7 +211,8 @@
 				error = null;
 
 				// Get audio URL (will use cache if available)
-				const audioURL = await getAudioForText(text, lang);
+				const cacheKey = `${lang}:${text}`;
+				const audioURL = prefetchCache.get(cacheKey) ?? (await getAudioForText(text, lang));
 				currentAudioURL = audioURL;
 
 				// Create and play audio element
@@ -206,10 +230,6 @@
 					playNarration(audioElement);
 				});
 
-				// Small pause between narrations
-				if (i < subtitleCount - 1) {
-					await new Promise(resolve => setTimeout(resolve, 500));
-				}
 			} catch (err) {
 				console.error(`Failed to play narration ${i + 1}:`, err);
 				error = err instanceof Error ? err.message : 'Failed to generate narration';
@@ -219,11 +239,9 @@
 
 		loading = false;
 
-		// After all narrations complete, auto-advance (unless it's the final step)
+		// After all narrations complete, auto-advance immediately (unless it's the final step)
 		if (stepValue !== 'tigerEats') {
-			setTimeout(() => {
-				advanceToNextStep();
-			}, 1500); // 1.5 second pause after all narrations
+			advanceToNextStep();
 		}
 	}
 
@@ -240,10 +258,13 @@
 		// Mark as manual change only if coming from initial (user clicked play button)
 		if (previousStep !== s) {
 			const isManualStart = previousStep === 'initial' && s === 'tigerAppears';
-			// Small delay to ensure step is properly set before starting narration
+			const nextStepValue = getNextStepForPrefetch(s);
+			if (nextStepValue) {
+				prefetchNarration(nextStepValue, language);
+			}
 			setTimeout(() => {
 				playNarrationForStep(s, language, isManualStart);
-			}, 100);
+			}, 0);
 		}
 	});
 
@@ -253,6 +274,10 @@
 		
 		// If language changed, replay narration for current step
 		if (previousLang !== lang && step) {
+			const nextStepValue = getNextStepForPrefetch(step);
+			if (nextStepValue) {
+				prefetchNarration(nextStepValue, lang);
+			}
 			playNarrationForStep(step, lang);
 		}
 	});

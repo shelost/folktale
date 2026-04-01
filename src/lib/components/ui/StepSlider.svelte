@@ -87,19 +87,19 @@
 
 <style lang="scss">
 
-$primary: #4a90e2;
-$primary-dark: #357abd;
-$completed-bg: #f0f8ff;
-$completed-hover-bg: #e6f3ff;
-$completed-color: #357abd;
+$primary: #7a2f20;
+$primary-dark: #5f2317;
+$completed-bg: #efe1bf;
+$completed-hover-bg: #e8d6b0;
+$completed-color: #5f2317;
 $button-bg: white;
-$button-border: #e0e0e0;
+$button-border: #8d6a3f;
 $button-radius: 12px;
-$disabled-bg: #f5f5f5;
+$disabled-bg: #d8c7a1;
 $shadow-light: 0 2px 8px rgba(0, 0, 0, 0.1);
 $shadow-hover: 0 4px 8px rgba(0, 0, 0, 0.15);
 $shadow-active: 0 4px 12px rgba($primary, 0.4);
-$connector-bg: #e0e0e0;
+$connector-bg: #8d6a3f;
 $connector-active-bg: $primary;
 
 .step-slider {
@@ -107,10 +107,10 @@ $connector-active-bg: $primary;
 	top: 12px;
 	left: 50%;
 	transform: translateX(-50%);
-	background: rgba(0, 0, 0, 0.7);
-	backdrop-filter: blur(10px);
+	background: linear-gradient(180deg, rgba(242, 229, 200, 0.95) 0%, rgba(230, 212, 174, 0.95) 100%);
+	backdrop-filter: blur(6px);
 	border-radius: 60px;
-	border: 1px solid rgba(255, 255, 255, 0.2);
+	border: 2px solid #8d6a3f;
 	padding: 12px 20px;
 	z-index: 10;
 	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
@@ -147,12 +147,12 @@ $connector-active-bg: $primary;
 	width: 32px;
 	height: 32px;
 
-	border: 2px solid white;
+	border: 2px solid #8d6a3f;
 	border-radius: 60px;
-	background: rgba(black, .1);
+	background: rgba(255, 246, 227, 0.85);
 	cursor: pointer;
 	transition: all 0.2s ease;
-	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	font-family: 'Nanum Myeongjo', 'AppleMyungjo', 'Times New Roman', serif;
 
 	&:hover:not(:disabled) {
 		box-shadow: $shadow-hover;
@@ -160,8 +160,8 @@ $connector-active-bg: $primary;
 	}
 
 	&.active {
-		background: #030025;
-		color: white;
+		background: $primary;
+		color: #f9ecd4;
 		box-shadow: $shadow-active;
 
 		.step-number,
@@ -171,8 +171,8 @@ $connector-active-bg: $primary;
 	}
 
 	&.completed {
-		background: rgba(black, .2);
-		color: black;
+		background: rgba(239, 225, 191, 0.95);
+		color: #3f2a18;
 
 		&:hover:not(:disabled) {
 			background: $completed-hover-bg;
@@ -192,7 +192,7 @@ $connector-active-bg: $primary;
 }
 
 .step-number {
-	color: white;
+	color: #3f2a18;
 	font-size: 14px;
 	font-weight: 500;
 	line-height: 1;

@@ -82,8 +82,8 @@
 		position: fixed;
 		bottom: 20px;
 		left: 20px;
-		background: rgba(255, 255, 255, 0.9);
-		border: 2px solid #333;
+		background: linear-gradient(180deg, var(--storybook-paper) 0%, var(--storybook-paper-dark) 100%);
+		border: 2px solid var(--storybook-border);
 		border-radius: 50%;
 		width: 60px;
 		height: 60px;
@@ -94,10 +94,11 @@
 		z-index: 200;
 		transition: transform 0.2s, background-color 0.2s;
 		font-size: 1.5rem;
+		box-shadow: 0 4px 10px rgba(38, 23, 10, 0.3);
 	}
 
 	.audio-control:hover {
-		background: rgba(255, 255, 255, 1);
+		background: linear-gradient(180deg, #f7ecd4 0%, #e9d8b5 100%);
 		transform: scale(1.1);
 	}
 

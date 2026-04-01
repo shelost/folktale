@@ -24,9 +24,27 @@
 	let step = $state<SceneStep>('initial');
 	let language: Language = $state('kr');
 	let roarAudio: HTMLAudioElement | null = $state(null);
+	let showUI = $state(false);
+	let enableAudioSubtitles = $state(false);
+	let uiTimers: number[] = [];
 
 	const unsubscribeStep = currentStep.subscribe((s) => {
+		const prevStep = step;
 		step = s;
+
+		if (s !== 'initial' && prevStep === 'initial') {
+			uiTimers.push(
+				window.setTimeout(() => { showUI = true; }, 800),
+				window.setTimeout(() => { enableAudioSubtitles = true; }, 1400)
+			);
+		}
+
+		if (s === 'initial') {
+			showUI = false;
+			enableAudioSubtitles = false;
+			uiTimers.forEach((id) => clearTimeout(id));
+			uiTimers = [];
+		}
 	});
 
 	const unsubscribeLang = languageStore.subscribe((lang) => {
@@ -78,6 +96,7 @@
 		return () => {
 			unsubscribeStep();
 			unsubscribeLang();
+			uiTimers.forEach((id) => clearTimeout(id));
 			if (roarAudio) {
 				roarAudio.pause();
 				roarAudio = null;
@@ -111,16 +130,28 @@
 	{#if step === 'riceCakeVisible'}
 		<RiceCakes />
 	{/if}
-	<AnimationSubtitleOverlay />
-	<AnimationNarrationManager />
+	{#if enableAudioSubtitles}
+		<AnimationSubtitleOverlay />
+		<AnimationNarrationManager />
+	{/if}
 	<TigerSpeechBubble />
 	<CharacterClickZones />
-	<div class="animation-overlay-ui">
-		<StepSlider />
-		<LanguageToggle />
-		<AudioControls />
-		<CulturalDictionaryPanel entries={animationData.culturalDictionary} />
-		<ParentTipPanel tips={animationData.parentTips} mode="animation" showDuringIntro={true} />
+	<div class="animation-overlay-ui" class:visible={showUI}>
+		<div class="stagger-item" style="--stagger-x: 0; --stagger-y: -24px; --stagger-delay: 0ms">
+			<StepSlider />
+		</div>
+		<div class="stagger-item" style="--stagger-x: -24px; --stagger-y: 0; --stagger-delay: 80ms">
+			<CulturalDictionaryPanel entries={animationData.culturalDictionary} />
+		</div>
+		<div class="stagger-item" style="--stagger-x: 24px; --stagger-y: 0; --stagger-delay: 80ms">
+			<LanguageToggle />
+		</div>
+		<div class="stagger-item" style="--stagger-x: 0; --stagger-y: 24px; --stagger-delay: 160ms">
+			<AudioControls />
+		</div>
+		<div class="stagger-item" style="--stagger-x: 24px; --stagger-y: 0; --stagger-delay: 160ms">
+			<ParentTipPanel tips={animationData.parentTips} mode="animation" showDuringIntro={false} />
+		</div>
 	</div>
 </div>
 
@@ -142,8 +173,32 @@
 		pointer-events: none;
 	}
 
-	.animation-overlay-ui > :global(*) {
+	.animation-overlay-ui > .stagger-item {
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	.animation-overlay-ui.visible > .stagger-item {
+		animation: stagger-in 0.5s ease forwards;
+		animation-delay: var(--stagger-delay, 0ms);
+	}
+
+	.animation-overlay-ui.visible > .stagger-item > :global(*) {
 		pointer-events: auto;
+	}
+
+	@keyframes stagger-in {
+		from {
+			opacity: 0;
+			transform: translate(
+				calc(var(--stagger-x, 0) * 1px),
+				calc(var(--stagger-y, 0) * 1px)
+			);
+		}
+		to {
+			opacity: 1;
+			transform: translate(0, 0);
+		}
 	}
 
 	.interaction-overlay {
@@ -169,17 +224,17 @@
 	}
 
 	.explainer-text {
-		background: linear-gradient(135deg, #fff8dc 0%, #ffe4b5 100%);
-		border: 3px solid #d4a574;
+		background: linear-gradient(180deg, var(--storybook-paper) 0%, var(--storybook-paper-dark) 100%);
+		border: 3px solid var(--storybook-border);
 		border-radius: 16px;
 		padding: 20px 32px;
 		font-size: 1.5rem;
 		font-weight: 600;
-		color: #8b4513;
+		color: var(--storybook-ink);
 		text-align: center;
-		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+		box-shadow: 0 8px 24px rgba(38, 23, 10, 0.4);
 		margin: 0;
-		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+		font-family: 'Nanum Myeongjo', 'AppleMyungjo', 'Times New Roman', serif;
 		white-space: nowrap;
 	}
 
@@ -200,6 +255,13 @@
 		to {
 			opacity: 1;
 			transform: translate(-50%, -50%);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.animation-overlay-ui.visible > .stagger-item {
+			animation: none;
+			opacity: 1;
 		}
 	}
 
