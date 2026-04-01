@@ -15,10 +15,9 @@
 	let detachNarrationListeners: (() => void) | null = null;
 	const AUDIO_SYNC_OFFSET_MS = 120;
 
-	// Keywords to highlight with their colors
 	const keywordStyles: Record<string, { kr: string; en: string; color: string }> = {
 		tiger: { kr: '호랑이', en: 'tiger', color: '#FF6B35' },
-		riceCake: { kr: '떡', en: 'rice cake', color: '#FFD700' },
+		riceCake: { kr: '떡', en: 'rice cake', color: '#C87000' },
 		mother: { kr: '어머니', en: 'mother', color: '#FF69B4' },
 		roar: { kr: '어흥', en: 'Roar', color: '#FF4500' }
 	};
@@ -47,16 +46,25 @@
 		return text.trim().split(/\s+/).filter(Boolean);
 	}
 
-	function getWordStyle(word: string, lang: Language): string {
-		const normalizedWord = word.toLowerCase().replace(/[.,!?'"()]/g, '');
+	function getWordSegments(word: string, lang: Language): Array<{ text: string; style: string }> {
+		const lowerWord = word.toLowerCase();
 		for (const key in keywordStyles) {
 			const keyword = keywordStyles[key];
 			const keywordText = (lang === 'kr' ? keyword.kr : keyword.en).toLowerCase();
-			if (normalizedWord.includes(keywordText)) {
-				return `color: ${keyword.color};`;
+			const idx = lowerWord.indexOf(keywordText);
+			if (idx !== -1) {
+				const style = `color: ${keyword.color}; font-weight: 700;`;
+				const before = word.substring(0, idx);
+				const match = word.substring(idx, idx + keywordText.length);
+				const after = word.substring(idx + keywordText.length);
+				const segments: Array<{ text: string; style: string }> = [];
+				if (before) segments.push({ text: before, style: '' });
+				segments.push({ text: match, style });
+				if (after) segments.push({ text: after, style: '' });
+				return segments;
 			}
 		}
-		return '';
+		return [{ text: word, style: '' }];
 	}
 
 	function resetWordHighlight() {
@@ -186,9 +194,10 @@
 				<span
 					class="subtitle-word"
 					class:active-word={index === activeWordIndex}
-					style={getWordStyle(word, language)}
 				>
-					{word}
+					{#each getWordSegments(word, language) as seg}
+						<span style={seg.style}>{seg.text}</span>
+					{/each}
 				</span>{' '}
 			{/each}
 		</p>

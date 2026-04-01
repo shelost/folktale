@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { currentStep, nextStep } from '$lib/stores/stepStore';
+	import { currentStep, nextStep, goToStep } from '$lib/stores/stepStore';
 	import { triggerSceneEvent } from '$lib/stores/sceneStore';
 	import { languageStore } from '$lib/stores/languageStore';
 	import BookIntroThree from '$lib/components/ui/BookIntroThree.svelte';
@@ -13,16 +13,22 @@
 	let hasOpenedBook = $state(false);
 	let hasEnteredStory = $state(false);
 	let blackOverlayActive = $state(false);
+	let isClosingBook = $state(false);
+	let closingTimers: number[] = [];
 
 	const unsubscribeStep = currentStep.subscribe((s) => {
 		const previousStep = step;
 		step = s;
 
-		if (s === 'initial' && previousStep !== 'initial') {
+		if (s === 'initial' && previousStep !== 'initial' && !isClosingBook) {
 			isOpeningBook = false;
 			hasOpenedBook = false;
 			hasEnteredStory = false;
 			blackOverlayActive = false;
+		}
+
+		if (s === 'complete' && previousStep !== 'complete') {
+			startClosingSequence();
 		}
 	});
 
@@ -31,7 +37,7 @@
 	});
 
 	function handleBookClick() {
-		if (isOpeningBook) return;
+		if (isOpeningBook || isClosingBook) return;
 		isOpeningBook = true;
 		hasEnteredStory = false;
 
@@ -75,27 +81,70 @@
 		}, 450);
 	}
 
+	function startClosingSequence() {
+		clearClosingTimers();
+
+		closingTimers.push(
+			window.setTimeout(() => {
+				blackOverlayActive = true;
+			}, 2000),
+			window.setTimeout(() => {
+				isClosingBook = true;
+				isOpeningBook = false;
+				hasOpenedBook = false;
+			}, 2500),
+			window.setTimeout(() => {
+				blackOverlayActive = false;
+			}, 2700)
+		);
+	}
+
+	function handleThreeClose() {
+		isClosingBook = false;
+		isOpeningBook = false;
+		hasOpenedBook = false;
+		hasEnteredStory = false;
+		goToStep('initial');
+	}
+
+	function clearClosingTimers() {
+		closingTimers.forEach((id) => clearTimeout(id));
+		closingTimers = [];
+	}
+
 	onMount(() => {
 		isOpeningBook = false;
 		hasOpenedBook = false;
 		hasEnteredStory = false;
 		blackOverlayActive = false;
+		isClosingBook = false;
 	});
 
 	onDestroy(() => {
 		unsubscribeStep();
 		unsubscribeLang();
+		clearClosingTimers();
 	});
+
+	const showIntro = $derived(step === 'initial' || isClosingBook);
 </script>
 
-{#if step === 'initial'}
+{#if showIntro}
 	<div class="intro-container">
 		<div class="book-overlay">
-			<div class="click-hint" class:hidden={isOpeningBook}>
-				<span>{language === 'kr' ? '클릭하여 열기' : 'Click to open'}</span>
-			</div>
+			{#if !isClosingBook}
+				<div class="click-hint" class:hidden={isOpeningBook}>
+					<span>{language === 'kr' ? '클릭하여 열기' : 'Click to open'}</span>
+				</div>
+			{/if}
 			<div class="book-stage" class:opened={hasOpenedBook}>
-				<BookIntroThree opening={isOpeningBook} onComplete={handleThreeComplete} onClick={handleBookClick} />
+				<BookIntroThree
+					opening={isOpeningBook}
+					closing={isClosingBook}
+					onComplete={handleThreeComplete}
+					onClose={handleThreeClose}
+					onClick={handleBookClick}
+				/>
 			</div>
 		</div>
 	</div>

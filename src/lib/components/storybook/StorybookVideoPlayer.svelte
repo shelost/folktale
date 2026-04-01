@@ -5,6 +5,7 @@
 	import type { SceneStep } from '$lib/stores/stepStore';
 
 	let step = $state<SceneStep>('initial');
+	let prevStep = $state<SceneStep>('initial');
 	let videoElement: HTMLVideoElement | null = $state(null);
 	let showVideo = $state(false);
 	let subtitleIndex = $state(0);
@@ -12,7 +13,6 @@
 
 	const VIDEO_SRC = '/tiger_storybook.mp4';
 
-	// Cutoff points define the end time for each section
 	const stepSegments: Record<string, { start: number; end: number | null }> = {
 		'tigerAppears': { start: 0, end: 4 },
 		'motherFalls': { start: 4, end: 8 },
@@ -21,85 +21,97 @@
 		'complete': { start: 12, end: null }
 	};
 
-	function attachTimeGuard() {
-		if (!videoElement) return;
+	const INTERACTION_BOUNDARY = 8;
 
-		if (timeUpdateHandler) {
+	const stepOrder = ['initial', 'tigerAppears', 'motherFalls', 'riceCakeVisible', 'tigerEats', 'complete'];
+
+	function isSequentialAdvance(from: SceneStep, to: SceneStep): boolean {
+		return stepOrder.indexOf(to) === stepOrder.indexOf(from) + 1;
+	}
+
+	function detachTimeGuard() {
+		if (videoElement && timeUpdateHandler) {
 			videoElement.removeEventListener('timeupdate', timeUpdateHandler);
 		}
+		timeUpdateHandler = null;
+	}
 
-		const segment = stepSegments[step];
-		if (!segment || segment.end === null) {
-			timeUpdateHandler = null;
-			return;
-		}
+	function attachPauseGuard(pauseAt: number) {
+		detachTimeGuard();
+		if (!videoElement) return;
 
 		timeUpdateHandler = () => {
-			if (videoElement && videoElement.currentTime >= segment.end!) {
+			if (videoElement && videoElement.currentTime >= pauseAt) {
 				videoElement.pause();
-				videoElement.currentTime = segment.end!;
+				videoElement.currentTime = pauseAt;
 			}
 		};
-
 		videoElement.addEventListener('timeupdate', timeUpdateHandler);
 	}
 
-	function seekAndPlay(segment: { start: number; end: number | null }) {
-		if (!videoElement) return;
-
-		videoElement.currentTime = segment.start;
-
-		if (step === 'riceCakeVisible' || step === 'complete') {
-			videoElement.pause();
-		} else {
-			videoElement.play().catch((error) => {
-				console.error('Error playing video:', error);
-				if (error.name === 'NotAllowedError') {
-					videoElement!.muted = true;
-					videoElement!.play().catch((mutedError) => {
-						console.error('Error playing muted video:', mutedError);
-					});
-				}
-			});
-		}
-
-		attachTimeGuard();
+	function ensurePlaying() {
+		if (!videoElement || !videoElement.paused) return;
+		videoElement.play().catch((error) => {
+			console.error('Error playing video:', error);
+			if (error.name === 'NotAllowedError') {
+				videoElement!.muted = true;
+				videoElement!.play().catch((mutedError) => {
+					console.error('Error playing muted video:', mutedError);
+				});
+			}
+		});
 	}
 
 	const unsubscribeStep = currentStep.subscribe((s) => {
+		prevStep = step;
 		step = s;
 
 		const segment = stepSegments[s];
-		if (segment) {
-			showVideo = true;
-		} else {
+		if (!segment) {
 			showVideo = false;
 			return;
 		}
 
-		if (videoElement) {
-			if (s === 'riceCakeVisible') {
-				videoElement.pause();
-				videoElement.removeAttribute('autoplay');
-			} else if (s === 'tigerEats') {
-				seekAndPlay(segment);
-			} else if (s === 'complete') {
-				videoElement.pause();
-				videoElement.removeAttribute('autoplay');
+		showVideo = true;
+		detachTimeGuard();
+
+		if (!videoElement) return;
+
+		if (s === 'tigerAppears' || s === 'motherFalls') {
+			if (isSequentialAdvance(prevStep, s) && !videoElement.paused) {
+				// Sequential: keep playing, don't seek
 			} else {
-				seekAndPlay(segment);
+				videoElement.currentTime = segment.start;
 			}
+			attachPauseGuard(INTERACTION_BOUNDARY);
+			ensurePlaying();
+			return;
+		}
+
+		if (s === 'riceCakeVisible') {
+			videoElement.currentTime = segment.start;
+			videoElement.pause();
+			return;
+		}
+
+		if (s === 'tigerEats') {
+			videoElement.currentTime = segment.start;
+			ensurePlaying();
+			return;
+		}
+
+		if (s === 'complete') {
+			videoElement.pause();
+			return;
 		}
 	});
 
 	const unsubscribeSubtitleIndex = currentSubtitleIndex.subscribe((index) => {
 		subtitleIndex = index;
-		// For the storybook player, the video plays continuously within a segment,
-		// so subtitle index changes don't require seeking — narration handles it.
 	});
 
 	function handleVideoEnded() {
-		// Video ended — narration manager handles advancement
+		// Video ended — narration manager handles step advancement.
 	}
 
 	function handleVideoLoaded() {
@@ -112,17 +124,19 @@
 			videoElement.currentTime = segment.start;
 			videoElement.pause();
 		} else if (step !== 'initial') {
-			seekAndPlay(segment);
+			videoElement.currentTime = segment.start;
+			if (step === 'tigerAppears' || step === 'motherFalls') {
+				attachPauseGuard(INTERACTION_BOUNDARY);
+			}
+			ensurePlaying();
 		}
 	}
 
 	onDestroy(() => {
 		unsubscribeStep();
 		unsubscribeSubtitleIndex();
+		detachTimeGuard();
 		if (videoElement) {
-			if (timeUpdateHandler) {
-				videoElement.removeEventListener('timeupdate', timeUpdateHandler);
-			}
 			videoElement.pause();
 			videoElement = null;
 		}

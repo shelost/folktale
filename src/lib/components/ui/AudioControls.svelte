@@ -1,25 +1,41 @@
 <script lang="ts">
-	import { audioPlaying, audioCurrentTime, createAudioElement, playAudio, pauseAudio } from '$lib/stores/audioStore';
+	import { onDestroy } from 'svelte';
+	import {
+		audioPlaying,
+		audioCurrentTime,
+		createAudioElement,
+		playAudio,
+		pauseAudio,
+		narrationPlaying,
+		narrationElement,
+		pauseNarration
+	} from '$lib/stores/audioStore';
 	import { scene3Data } from '$lib/data/scene3';
+	import { get } from 'svelte/store';
+
+	let { mode = 'scene3' }: { mode?: 'scene3' | 'narration' } = $props();
 
 	let audio: HTMLAudioElement | null = $state(null);
 	let playing = $state(false);
-	let audioReady = $state(false);
 	let simulationInterval: number | null = $state(null);
+	let isNarrationMode = $derived(mode === 'narration');
 
-	const unsubscribePlaying = audioPlaying.subscribe((isPlaying) => {
-		playing = isPlaying;
+	const unsubscribeNarration = narrationPlaying.subscribe((v) => {
+		if (isNarrationMode) playing = v;
+	});
+
+	const unsubscribeAudio = audioPlaying.subscribe((v) => {
+		if (!isNarrationMode) playing = v;
 	});
 
 	function simulateAudioPlayback() {
-		// Simulate audio playback for testing without audio file
 		let currentTime = 0;
-		const duration = 15; // 15 seconds based on last timing
-		
+		const duration = 15;
+
 		simulationInterval = setInterval(() => {
 			currentTime += 0.1;
 			audioCurrentTime.set(currentTime);
-			
+
 			if (currentTime >= duration) {
 				audioPlaying.set(false);
 				audioCurrentTime.set(0);
@@ -31,30 +47,30 @@
 		}, 100) as unknown as number;
 	}
 
-	function handlePlayPause() {
+	function handlePlayPauseNarration() {
+		const el = get(narrationElement);
 		if (playing) {
-			// Pause
+			pauseNarration();
+		} else if (el) {
+			el.play();
+		}
+	}
+
+	function handlePlayPauseScene3() {
+		if (playing) {
 			if (audio) {
 				pauseAudio(audio);
 			} else if (simulationInterval) {
-				// Pause simulation
 				clearInterval(simulationInterval);
 				simulationInterval = null;
 			}
 			audioPlaying.set(false);
 		} else {
-			// Play
 			if (scene3Data.audio.url) {
-				// Use real audio file if available
 				if (!audio) {
 					audio = createAudioElement(scene3Data.audio.url);
-					audio.addEventListener('canplay', () => {
-						audioReady = true;
-					});
-					audio.addEventListener('error', (e) => {
-						console.error('Audio error:', e);
-						console.log('Falling back to simulated audio playback');
-						// Fall back to simulation if audio file fails
+					audio.addEventListener('canplay', () => {});
+					audio.addEventListener('error', () => {
 						audio = null;
 						simulateAudioPlayback();
 						audioPlaying.set(true);
@@ -64,13 +80,24 @@
 					playAudio(audio);
 				}
 			} else {
-				// No audio file, simulate playback
-				console.log('No audio file provided, simulating playback for scene progression');
 				simulateAudioPlayback();
 				audioPlaying.set(true);
 			}
 		}
 	}
+
+	function handlePlayPause() {
+		if (mode === 'narration') {
+			handlePlayPauseNarration();
+		} else {
+			handlePlayPauseScene3();
+		}
+	}
+
+	onDestroy(() => {
+		unsubscribeNarration();
+		unsubscribeAudio();
+	});
 </script>
 
 <button class="audio-control" onpointerdown={handlePlayPause} aria-label={playing ? 'Pause audio' : 'Play audio'}>
@@ -110,4 +137,3 @@
 		display: block;
 	}
 </style>
-

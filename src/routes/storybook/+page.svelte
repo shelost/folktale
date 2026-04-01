@@ -147,7 +147,7 @@
 			<LanguageToggle />
 		</div>
 		<div class="stagger-item" style="--stagger-x: 0; --stagger-y: 24px; --stagger-delay: 160ms">
-			<AudioControls />
+			<AudioControls mode="narration" />
 		</div>
 		<div class="stagger-item" style="--stagger-x: 24px; --stagger-y: 0; --stagger-delay: 160ms">
 			<ParentTipPanel tips={animationData.parentTips} mode="animation" showDuringIntro={false} />

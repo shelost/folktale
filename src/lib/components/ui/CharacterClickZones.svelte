@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
+	import { get } from 'svelte/store';
 	import { currentStep } from '$lib/stores/stepStore';
 	import { languageStore } from '$lib/stores/languageStore';
+	import { narrationPlaying, narrationElement, pauseNarration } from '$lib/stores/audioStore';
 	import { getAudioForText, revokeAudioURL } from '$lib/utils/ttsService';
 	import type { SceneStep } from '$lib/stores/stepStore';
 	import type { Language } from '$lib/types/scene';
@@ -34,39 +36,50 @@
 		const word = characterWords[character];
 		const text = language === 'kr' ? word.kr : word.en;
 
+		let wasNarrationPaused = false;
+
 		try {
 			isPlaying = true;
 			showFeedback = character;
 
-			// Revoke previous audio URL if exists
 			if (currentAudioURL) {
 				revokeAudioURL(currentAudioURL);
 				currentAudioURL = null;
 			}
 
-			// Stop previous audio if playing
 			if (currentAudio) {
 				currentAudio.pause();
 				currentAudio = null;
 			}
 
-			// Get audio URL for the word
+			if (get(narrationPlaying)) {
+				pauseNarration();
+				wasNarrationPaused = true;
+			}
+
 			const audioURL = await getAudioForText(text, language);
 			currentAudioURL = audioURL;
 
-			// Create and play audio
 			const audio = new Audio(audioURL);
 			currentAudio = audio;
 
 			audio.addEventListener('ended', () => {
 				isPlaying = false;
 				showFeedback = null;
+				if (wasNarrationPaused) {
+					const el = get(narrationElement);
+					if (el) el.play();
+				}
 			});
 
 			audio.addEventListener('error', () => {
 				console.error('Error playing word audio');
 				isPlaying = false;
 				showFeedback = null;
+				if (wasNarrationPaused) {
+					const el = get(narrationElement);
+					if (el) el.play();
+				}
 			});
 
 			await audio.play();
@@ -74,6 +87,10 @@
 			console.error('Failed to play word audio:', err);
 			isPlaying = false;
 			showFeedback = null;
+			if (wasNarrationPaused) {
+				const el = get(narrationElement);
+				if (el) el.play();
+			}
 		}
 	}
 

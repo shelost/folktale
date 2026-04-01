@@ -6,11 +6,15 @@
 
 	let {
 		opening = false,
+		closing = false,
 		onComplete,
+		onClose,
 		onClick
 	}: {
 		opening?: boolean;
+		closing?: boolean;
 		onComplete?: () => void;
+		onClose?: () => void;
 		onClick?: () => void;
 	} = $props();
 
@@ -18,6 +22,7 @@
 	let rafId: number | null = null;
 	let lastTs = 0;
 	let sentComplete = false;
+	let sentClose = false;
 	let textureReady = $state(false);
 	let imageAspect = $state(1);
 
@@ -58,7 +63,12 @@
 		lastTs = 0;
 
 		const tick = (ts: number) => {
-			if (!opening && progress >= 0.999) {
+			const isIdle = !opening && !closing;
+			if (isIdle && progress <= 0.001) {
+				stopLoop();
+				return;
+			}
+			if (isIdle && progress >= 0.999) {
 				stopLoop();
 				return;
 			}
@@ -70,12 +80,20 @@
 			const dt = Math.min(0.05, (ts - lastTs) / 1000);
 			lastTs = ts;
 
-			const speed = opening ? 1.05 : 1.9;
-			progress = Math.max(0, Math.min(1, progress + (opening ? dt * speed : -dt * speed)));
+			if (opening) {
+				progress = Math.min(1, progress + dt * 1.05);
+			} else if (closing) {
+				progress = Math.max(0, progress - dt * 1.2);
+			}
 
 			if (opening && progress >= 0.70 && !sentComplete) {
 				sentComplete = true;
 				onComplete?.();
+			}
+
+			if (closing && progress <= 0.01 && !sentClose) {
+				sentClose = true;
+				onClose?.();
 			}
 
 			rafId = requestAnimationFrame(tick);
@@ -85,8 +103,18 @@
 	}
 
 	$effect(() => {
-		if (opening) sentComplete = false;
-		startLoop();
+		if (opening) {
+			sentComplete = false;
+			startLoop();
+		}
+	});
+
+	$effect(() => {
+		if (closing) {
+			sentClose = false;
+			progress = 1;
+			startLoop();
+		}
 	});
 
 	onDestroy(() => {
@@ -99,15 +127,17 @@
 	const bookPositionZ = $derived(eased * 3.0);
 	const bookPositionX = $derived(eased * 1.6);
 	const bookTiltX = $derived(-0.08 + eased * 0.02);
+
+	const isClickable = $derived(!opening && !closing);
 </script>
 
 {#if browser}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		class="three-wrap"
-		class:clickable={!opening}
+		class:clickable={isClickable}
 		aria-hidden="true"
-		onpointerdown={!opening ? onClick : undefined}
+		onpointerdown={isClickable ? onClick : undefined}
 	>
 		<Canvas dpr={1.5}>
 			<T.PerspectiveCamera makeDefault position={[0, 0.36, 11.2]} fov={36} />

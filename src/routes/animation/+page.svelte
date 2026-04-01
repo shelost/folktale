@@ -24,9 +24,27 @@
 	let step = $state<SceneStep>('initial');
 	let language: Language = $state('kr');
 	let roarAudio: HTMLAudioElement | null = $state(null);
+	let showUI = $state(false);
+	let enableAudioSubtitles = $state(false);
+	let uiTimers: number[] = [];
 
 	const unsubscribeStep = currentStep.subscribe((s) => {
+		const prevStep = step;
 		step = s;
+
+		if (s !== 'initial' && prevStep === 'initial') {
+			uiTimers.push(
+				window.setTimeout(() => { showUI = true; }, 800),
+				window.setTimeout(() => { enableAudioSubtitles = true; }, 1400)
+			);
+		}
+
+		if (s === 'initial') {
+			showUI = false;
+			enableAudioSubtitles = false;
+			uiTimers.forEach((id) => clearTimeout(id));
+			uiTimers = [];
+		}
 	});
 
 	const unsubscribeLang = languageStore.subscribe((lang) => {
@@ -34,21 +52,17 @@
 	});
 
 	function handleRightHalfClick(e: PointerEvent) {
-		// Only allow clicks after tiger appears
 		if (step === 'initial' || !roarAudio) return;
 
-		// Don't trigger if clicking on interactive elements
 		const target = e.target as HTMLElement;
 		if (target.closest('button') || target.closest('.rice-cake-zone') || target.closest('video')) {
 			return;
 		}
 
-		// Check if click is on the right half of the screen
 		const clickX = e.clientX;
 		const screenWidth = window.innerWidth;
 		
 		if (clickX > screenWidth / 2) {
-			// Reset and play the roar sound
 			roarAudio.currentTime = 0;
 			roarAudio.play().catch((error) => {
 				console.error('Error playing roar sound:', error);
@@ -56,7 +70,6 @@
 		}
 	}
 
-	// Initialize scene store with animation data
 	onMount(() => {
 		sceneStore.set({
 			currentScene: 'animation',
@@ -77,13 +90,13 @@
 			}
 		});
 
-		// Load roar sound
 		roarAudio = new Audio('/roar.mov');
 		roarAudio.preload = 'auto';
 
 		return () => {
 			unsubscribeStep();
 			unsubscribeLang();
+			uiTimers.forEach((id) => clearTimeout(id));
 			if (roarAudio) {
 				roarAudio.pause();
 				roarAudio = null;
@@ -98,9 +111,7 @@
 		<VideoPlayer />
 	{/if}
 	{#if step === 'riceCakeVisible'}
-		<!-- Dimming overlay for interaction phase -->
 		<div class="interaction-overlay"></div>
-		<!-- Explainer text for interaction -->
 		<div class="interaction-explainer">
 			<p class="explainer-text">
 				{language === 'kr' 
@@ -119,17 +130,28 @@
 	{#if step === 'riceCakeVisible'}
 		<RiceCakes />
 	{/if}
-	<AnimationSubtitleOverlay />
-	<AnimationNarrationManager />
+	{#if enableAudioSubtitles}
+		<AnimationSubtitleOverlay />
+		<AnimationNarrationManager />
+	{/if}
 	<TigerSpeechBubble />
 	<CharacterClickZones />
-	<!-- Above AnimationIntroVideo (z-index 1000) so dictionary, parent tips, and controls work during intro -->
-	<div class="animation-overlay-ui" class:visible={step !== 'initial'}>
-		<StepSlider />
-		<LanguageToggle />
-		<AudioControls />
-		<CulturalDictionaryPanel entries={animationData.culturalDictionary} />
-		<ParentTipPanel tips={animationData.parentTips} mode="animation" showDuringIntro={false} />
+	<div class="animation-overlay-ui" class:visible={showUI}>
+		<div class="stagger-item" style="--stagger-x: 0; --stagger-y: -24px; --stagger-delay: 0ms">
+			<StepSlider />
+		</div>
+		<div class="stagger-item" style="--stagger-x: -24px; --stagger-y: 0; --stagger-delay: 80ms">
+			<CulturalDictionaryPanel entries={animationData.culturalDictionary} />
+		</div>
+		<div class="stagger-item" style="--stagger-x: 24px; --stagger-y: 0; --stagger-delay: 80ms">
+			<LanguageToggle />
+		</div>
+		<div class="stagger-item" style="--stagger-x: 0; --stagger-y: 24px; --stagger-delay: 160ms">
+			<AudioControls mode="narration" />
+		</div>
+		<div class="stagger-item" style="--stagger-x: 24px; --stagger-y: 0; --stagger-delay: 160ms">
+			<ParentTipPanel tips={animationData.parentTips} mode="animation" showDuringIntro={false} />
+		</div>
 	</div>
 </div>
 
@@ -149,20 +171,34 @@
 		inset: 0;
 		z-index: 1100;
 		pointer-events: none;
+	}
+
+	.animation-overlay-ui > .stagger-item {
 		opacity: 0;
-		transform: translateY(-18px);
-		transition:
-			opacity 0.5s ease,
-			transform 0.5s ease;
+		pointer-events: none;
 	}
 
-	.animation-overlay-ui.visible {
-		opacity: 1;
-		transform: translateY(0);
+	.animation-overlay-ui.visible > .stagger-item {
+		animation: stagger-in 0.5s ease forwards;
+		animation-delay: var(--stagger-delay, 0ms);
 	}
 
-	.animation-overlay-ui.visible > :global(*) {
+	.animation-overlay-ui.visible > .stagger-item > :global(*) {
 		pointer-events: auto;
+	}
+
+	@keyframes stagger-in {
+		from {
+			opacity: 0;
+			transform: translate(
+				calc(var(--stagger-x, 0) * 1px),
+				calc(var(--stagger-y, 0) * 1px)
+			);
+		}
+		to {
+			opacity: 1;
+			transform: translate(0, 0);
+		}
 	}
 
 	.interaction-overlay {
@@ -222,6 +258,13 @@
 		}
 	}
 
+	@media (prefers-reduced-motion: reduce) {
+		.animation-overlay-ui.visible > .stagger-item {
+			animation: none;
+			opacity: 1;
+		}
+	}
+
 	@media (max-width: 768px) {
 		.explainer-text {
 			font-size: 1.2rem;
@@ -230,4 +273,3 @@
 		}
 	}
 </style>
-
