@@ -222,7 +222,7 @@
 		position: fixed;
 		bottom: 20px;
 		right: 20px;
-		z-index: 250;
+		z-index: 1100;
 		display: flex;
 		flex-direction: column;
 		align-items: flex-end;

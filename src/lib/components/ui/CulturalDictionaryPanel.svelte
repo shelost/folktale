@@ -16,8 +16,18 @@
 		language = lang;
 	});
 
-	function toggleDictionary() {
-		showDictionary = !showDictionary;
+	function openDictionary() {
+		showDictionary = true;
+	}
+
+	function closeDictionary() {
+		showDictionary = false;
+	}
+
+	function handleBackdropClick(e: PointerEvent) {
+		if (e.target === e.currentTarget) {
+			closeDictionary();
+		}
 	}
 
 	onDestroy(() => {
@@ -27,7 +37,7 @@
 
 <button
 	class="dictionary-toggle"
-	onpointerdown={toggleDictionary}
+	onpointerdown={openDictionary}
 	aria-label="Cultural dictionary"
 	title="Cultural dictionary"
 >
@@ -35,7 +45,12 @@
 </button>
 
 {#if showDictionary}
-	<div class="dictionary-overlay" role="dialog" aria-label="Cultural Dictionary">
+	<div
+		class="dictionary-overlay"
+		role="dialog"
+		aria-label="Cultural Dictionary"
+		onpointerdown={handleBackdropClick}
+	>
 		<div class="dictionary-content">
 			<h2 class="dictionary-title" id="dictionary-dialog-title">
 				{language === 'kr' ? '문화 사전' : 'Cultural Dictionary'}
@@ -64,7 +79,7 @@
 					{/each}
 				</ul>
 			</div>
-			<button class="dictionary-close" onpointerdown={toggleDictionary}>
+			<button class="dictionary-close" onpointerdown={closeDictionary}>
 				{language === 'kr' ? '닫기' : 'Close'}
 			</button>
 		</div>
@@ -82,7 +97,7 @@
 		padding: 8px 12px;
 		cursor: pointer;
 		font-size: 1.5rem;
-		z-index: 200;
+		z-index: 1100;
 		transition:
 			transform 0.2s,
 			background-color 0.2s;
@@ -104,9 +119,10 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		z-index: 300;
+		z-index: 1200;
 		padding: 16px;
 		box-sizing: border-box;
+		animation: overlay-fade-in 0.25s ease-out;
 	}
 
 	.dictionary-content {
@@ -119,9 +135,31 @@
 		border-radius: 12px;
 		border: 2px solid var(--storybook-border);
 		padding: 24px;
-		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 		box-sizing: border-box;
 		overflow: hidden;
+		animation: dict-float 4s ease-in-out infinite, dict-enter 0.35s ease-out;
+	}
+
+	@keyframes overlay-fade-in {
+		from { opacity: 0; }
+		to { opacity: 1; }
+	}
+
+	@keyframes dict-enter {
+		from {
+			opacity: 0;
+			transform: translateY(24px) scale(0.96);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0) scale(1);
+		}
+	}
+
+	@keyframes dict-float {
+		0%, 100% { transform: translateY(0); }
+		50% { transform: translateY(-8px); }
 	}
 
 	.dictionary-title {

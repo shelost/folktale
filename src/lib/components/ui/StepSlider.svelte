@@ -112,7 +112,7 @@ $connector-active-bg: $primary;
 	border-radius: 60px;
 	border: 2px solid #8d6a3f;
 	padding: 12px 20px;
-	z-index: 10;
+	z-index: 1100;
 	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
 
 	@media (max-width: 768px) {

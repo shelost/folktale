@@ -96,7 +96,6 @@ export function createNarrationElement(url: string): HTMLAudioElement {
 
 	audio.addEventListener('ended', () => {
 		narrationPlaying.set(false);
-		narrationElement.set(null);
 	});
 
 	audio.addEventListener('error', (e) => {

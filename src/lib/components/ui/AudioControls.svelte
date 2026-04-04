@@ -52,7 +52,12 @@
 		if (playing) {
 			pauseNarration();
 		} else if (el) {
-			el.play();
+			if (el.ended) {
+				el.currentTime = 0;
+			}
+			el.play().catch((err) => {
+				console.error('Error resuming narration:', err);
+			});
 		}
 	}
 
@@ -118,7 +123,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		z-index: 200;
+		z-index: 1100;
 		transition: transform 0.2s, background-color 0.2s;
 		font-size: 1.5rem;
 		box-shadow: 0 4px 10px rgba(38, 23, 10, 0.3);

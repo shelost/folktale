@@ -34,7 +34,7 @@
 		display: flex;
 		align-items: center;
 		gap: 8px;
-		z-index: 200;
+		z-index: 1100;
 		transition: background-color 0.2s, transform 0.2s ease;
 		box-shadow: 0 4px 10px rgba(38, 23, 10, 0.25);
 	}
