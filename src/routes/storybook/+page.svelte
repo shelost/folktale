@@ -136,23 +136,13 @@
 	{/if}
 	<TigerSpeechBubble />
 	<CharacterClickZones />
-	<div class="animation-overlay-ui" class:visible={showUI}>
-		<div class="stagger-item" style="--stagger-x: 0; --stagger-y: -24px; --stagger-delay: 0ms">
-			<StepSlider />
-		</div>
-		<div class="stagger-item" style="--stagger-x: -24px; --stagger-y: 0; --stagger-delay: 80ms">
-			<CulturalDictionaryPanel entries={animationData.culturalDictionary} />
-		</div>
-		<div class="stagger-item" style="--stagger-x: 24px; --stagger-y: 0; --stagger-delay: 80ms">
-			<LanguageToggle />
-		</div>
-		<div class="stagger-item" style="--stagger-x: 0; --stagger-y: 24px; --stagger-delay: 160ms">
-			<AudioControls mode="narration" />
-		</div>
-		<div class="stagger-item" style="--stagger-x: 24px; --stagger-y: 0; --stagger-delay: 160ms">
-			<ParentTipPanel tips={animationData.parentTips} mode="animation" showDuringIntro={false} />
-		</div>
-	</div>
+	{#if showUI}
+		<StepSlider />
+		<CulturalDictionaryPanel entries={animationData.culturalDictionary} />
+		<LanguageToggle />
+		<AudioControls mode="narration" />
+		<ParentTipPanel tips={animationData.parentTips} mode="animation" showDuringIntro={false} />
+	{/if}
 </div>
 
 <style>
@@ -164,41 +154,6 @@
 		margin: 0;
 		padding: 0;
 		background: black;
-	}
-
-	.animation-overlay-ui {
-		position: fixed;
-		inset: 0;
-		z-index: 1100;
-		pointer-events: none;
-	}
-
-	.animation-overlay-ui > .stagger-item {
-		opacity: 0;
-		pointer-events: none;
-	}
-
-	.animation-overlay-ui.visible > .stagger-item {
-		animation: stagger-in 0.5s ease forwards;
-		animation-delay: var(--stagger-delay, 0ms);
-	}
-
-	.animation-overlay-ui.visible > .stagger-item > :global(*) {
-		pointer-events: auto;
-	}
-
-	@keyframes stagger-in {
-		from {
-			opacity: 0;
-			transform: translate(
-				calc(var(--stagger-x, 0) * 1px),
-				calc(var(--stagger-y, 0) * 1px)
-			);
-		}
-		to {
-			opacity: 1;
-			transform: translate(0, 0);
-		}
 	}
 
 	.interaction-overlay {
@@ -255,13 +210,6 @@
 		to {
 			opacity: 1;
 			transform: translate(-50%, -50%);
-		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.animation-overlay-ui.visible > .stagger-item {
-			animation: none;
-			opacity: 1;
 		}
 	}
 

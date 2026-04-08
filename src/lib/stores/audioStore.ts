@@ -12,6 +12,11 @@ export const narrationPlaying = writable<boolean>(false);
 export const narrationLoading = writable<boolean>(false);
 export const narrationElement = writable<HTMLAudioElement | null>(null);
 export const narrationError = writable<string | null>(null);
+export const narrationReplaySignal = writable<number>(0);
+
+export function requestNarrationReplay() {
+	narrationReplaySignal.update((n) => n + 1);
+}
 
 export function getCurrentSubtitle(timings: AudioTiming[], currentTime: number, lang: 'kr' | 'en'): string | null {
 	// Find the most recent timing that hasn't passed yet
